@@ -215,9 +215,14 @@ class InfobloxObjectManipulator(object):
         self._delete_infoblox_object('view', net_view_data)
 
     def update_network_options(self, ib_network, extattrs=None):
-        payload = {'options': ib_network.options}
+        payload = {}
+
+        if ib_network.options:
+            payload['options'] = ib_network.options
+
         if extattrs:
             payload['extattrs'] = extattrs
+
         self._update_infoblox_object_by_ref(ib_network.ref, payload)
 
     def get_network(self, net_view_name, cidr):
@@ -228,8 +233,14 @@ class InfobloxObjectManipulator(object):
         if not net:
             raise exc.InfobloxNetworkNotAvailable(
                 net_view_name=net_view_name, cidr=cidr)
-
         return objects.Network.from_dict(net)
+
+    def network_exists(self, net_view_name, cidr):
+        try:
+            self.get_network(net_view_name, cidr)
+        except exc.InfobloxNetworkNotAvailable:
+            return False
+        return True
 
     def bind_name_with_host_record(self, dnsview_name, ip, name):
         record_host = {

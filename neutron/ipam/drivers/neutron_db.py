@@ -69,13 +69,13 @@ def get_all_subnets(context):
     return context.session.query(models_v2.Subnet).all()
 
 
-def generate_ip(context, subnets):
+def generate_ip(context, subnet):
     try:
-        return _try_generate_ip(context, subnets)
+        return _try_generate_ip(context, subnet)
     except n_exc.IpAddressGenerationFailure:
-        _rebuild_availability_ranges(context, subnets)
+        _rebuild_availability_ranges(context, subnet)
 
-    return _try_generate_ip(context, subnets)
+    return _try_generate_ip(context, subnet)
 
 
 def allocate_specific_ip(context, subnet_id, ip_address):
@@ -85,35 +85,31 @@ def allocate_specific_ip(context, subnet_id, ip_address):
         models_v2.IPAvailabilityRange).join(
             models_v2.IPAllocationPool).with_lockmode('update')
     results = range_qry.filter_by(subnet_id=subnet_id)
-    for ip_range in results:
-        first = int(netaddr.IPAddress(ip_range['first_ip']))
-        last = int(netaddr.IPAddress(ip_range['last_ip']))
+    for range in results:
+        first = int(netaddr.IPAddress(range['first_ip']))
+        last = int(netaddr.IPAddress(range['last_ip']))
         if first <= ip <= last:
             if first == last:
-                context.session.delete(ip_range)
+                context.session.delete(range)
                 return
             elif first == ip:
-                new_first_ip = str(netaddr.IPAddress(ip_address) + 1)
-                ip_range['first_ip'] = new_first_ip
+                range['first_ip'] = str(netaddr.IPAddress(ip_address) + 1)
                 return
             elif last == ip:
-                new_last_ip = str(netaddr.IPAddress(ip_address) - 1)
-                ip_range['last_ip'] = new_last_ip
+                range['last_ip'] = str(netaddr.IPAddress(ip_address) - 1)
                 return
             else:
-                # Adjust the original range to end before ip_address
-                old_last_ip = ip_range['last_ip']
-                new_last_ip = str(netaddr.IPAddress(ip_address) - 1)
-                ip_range['last_ip'] = new_last_ip
-
-                # Create a new second range for after ip_address
-                new_first_ip = str(netaddr.IPAddress(ip_address) + 1)
-                new_ip_range = models_v2.IPAvailabilityRange(
-                    allocation_pool_id=ip_range['allocation_pool_id'],
-                    first_ip=new_first_ip,
-                    last_ip=old_last_ip)
-                context.session.add(new_ip_range)
-                return
+                # Split into two ranges
+                new_first = str(netaddr.IPAddress(ip_address) + 1)
+                new_last = range['last_ip']
+                range['last_ip'] = str(netaddr.IPAddress(ip_address) - 1)
+                ip_range = models_v2.IPAvailabilityRange(
+                    allocation_pool_id=range['allocation_pool_id'],
+                    first_ip=new_first,
+                    last_ip=new_last)
+                context.session.add(ip_range)
+                return ip_address
+        return None
 
 
 def get_dns_by_subnet(context, subnet_id):
@@ -131,41 +127,40 @@ def get_subnets_by_network(context, network_id):
     return subnet_qry.filter_by(network_id=network_id).all()
 
 
-def _try_generate_ip(context, subnets):
+def _try_generate_ip(context, subnet):
     """Generate an IP address.
 
     The IP address will be generated from one of the subnets defined on
     the network.
     """
+    if type(subnet) is list:
+        subnet = subnet[0]
     range_qry = context.session.query(
         models_v2.IPAvailabilityRange).join(
             models_v2.IPAllocationPool).with_lockmode('update')
-    for subnet in subnets:
-        ip_range = range_qry.filter_by(subnet_id=subnet['id']).first()
-        if not ip_range:
-            LOG.debug("All IPs from subnet %(subnet_id)s (%(cidr)s) "
-                      "allocated",
-                      {'subnet_id': subnet['id'],
-                       'cidr': subnet['cidr']})
-            continue
-        ip_address = ip_range['first_ip']
-        if ip_range['first_ip'] == ip_range['last_ip']:
-            # No more free indices on subnet => delete
-            LOG.debug("No more free IP's in slice. Deleting "
-                      "allocation pool.")
-            context.session.delete(ip_range)
-        else:
-            # increment the first free
-            new_first_ip = str(netaddr.IPAddress(ip_address) + 1)
-            ip_range['first_ip'] = new_first_ip
-        LOG.debug("Allocated IP - %(ip_address)s from %(first_ip)s "
-                  "to %(last_ip)s",
-                  {'ip_address': ip_address,
-                   'first_ip': ip_address,
-                   'last_ip': ip_range['last_ip']})
-        return {'ip_address': ip_address,
-                'subnet_id': subnet['id']}
-    raise n_exc.IpAddressGenerationFailure(net_id=subnets[0]['network_id'])
+    range = range_qry.filter_by(subnet_id=subnet.id).first()
+    if not range:
+        LOG.debug(_("All IPs from subnet %(subnet_id)s (%(cidr)s) "
+                    "allocated"),
+                  {'subnet_id': subnet.id,
+                   'cidr': subnet.cidr})
+        raise n_exc.IpAddressGenerationFailure(
+            net_id=subnet['network_id'])
+    ip_address = range['first_ip']
+    LOG.debug(_("Allocated IP - %(ip_address)s from %(first_ip)s "
+                "to %(last_ip)s"),
+              {'ip_address': ip_address,
+               'first_ip': range['first_ip'],
+               'last_ip': range['last_ip']})
+    if range['first_ip'] == range['last_ip']:
+        # No more free indices on subnet => delete
+        LOG.debug(_("No more free IP's in slice. Deleting allocation "
+                    "pool."))
+        context.session.delete(range)
+    else:
+        # increment the first free
+        range['first_ip'] = str(netaddr.IPAddress(ip_address) + 1)
+    return {'ip_address': ip_address, 'subnet_id': subnet.id}
 
 
 def _rebuild_availability_ranges(context, subnets):
