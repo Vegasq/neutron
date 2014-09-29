@@ -179,3 +179,7 @@ class OperationNotAllowed(exceptions.NeutronException):
 
 class InfobloxConnectionError(exceptions.NeutronException):
     message = _("Infoblox HTTP request failed with: %(reason)s")
+
+
+class InfobloxInternalPrivateSubnetAlreadyExist(exceptions.Conflict):
+    message = _("Network with the same CIDR already exists on NIOS.")

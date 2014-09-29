@@ -49,6 +49,8 @@ class CreateSubnetTestCases(base.BaseTestCase):
         self.subnet.__getitem__.side_effect = mock.MagicMock()
         self.object_manipulator = mock.Mock()
         ip_allocator = mock.Mock()
+        self.object_manipulator.network_exists.return_value = False
+        self.object_manipulator.set_network_view = mock.MagicMock()
 
         cfg = mock.Mock()
         cfg.reserve_dhcp_members = mock.Mock(return_value=[])
@@ -114,7 +116,7 @@ class UpdateSubnetTestCase(base.BaseTestCase):
     @mock.patch.object(infoblox_db, 'get_subnet_dhcp_port_address',
                        mock.Mock(return_value=None))
     def test_update_subnet_dns_primary_is_member_ip(self):
-        self.ib_net.member_ip_addr = 'member-ip'
+        self.ib_net.member_ip_addrs = ['member-ip']
         self.ib_net.dns_nameservers = ['member-ip', 'old_serv1', 'old_serv']
 
         self.ipam.update_subnet(self.context, self.sub_id, self.sub)
@@ -296,7 +298,7 @@ class DnsNameserversTestCase(base.BaseTestCase):
 
         network = objects.Network()
         network.members = ['member1']
-        network.member_ip_addr = '192.168.1.2'
+        network.member_ip_addrs = ['192.168.1.2']
         network.dns_nameservers = [expected_ip]
 
         infoblox.get_network.return_value = network
@@ -485,6 +487,80 @@ class CreateSubnetFlowTestCase(base.BaseTestCase):
         assert self.infoblox.delete_network.called
         assert not self.infoblox.delete_dns_view.called
         assert not self.infoblox.delete_network_view.called
+
+
+class CreateSubnetFlowNiosNetExistsTestCase(base.BaseTestCase):
+    def setUp(self):
+        super(CreateSubnetFlowNiosNetExistsTestCase, self).setUp()
+
+        self.infoblox = mock.Mock()
+        member_conf = mock.MagicMock()
+        ip_allocator = mock.Mock()
+        self.context = infoblox_ddi.FlowContext(mock.MagicMock(),
+                                                'create-subnet')
+        self.subnet = mock.MagicMock()
+        self.subnet.__getitem__.side_effect = mock.MagicMock()
+
+        self.infoblox.network_exists.return_value = True
+
+        self.b = ipam_controller.InfobloxIPAMController(self.infoblox,
+                                                        member_conf,
+                                                        ip_allocator)
+
+    def test_nios_network_is_updated_for_shared_os_network(self):
+        self.b.ea_manager.get_extattrs_for_network = mock.Mock(
+            return_value={
+                'os_network_is_external': {'value': 'False'},
+                'os_network_is_shared': {'value': 'True'}
+            })
+
+        self.b.create_subnet(self.context, self.subnet)
+
+        taskflow.engines.run(self.context.parent_flow,
+                             store=self.context.store)
+        assert self.infoblox.update_network_options.called_once
+
+    def test_nios_network_is_updated_for_shared_external_os_network(self):
+        self.b.ea_manager.get_extattrs_for_network = mock.Mock(
+            return_value={
+                'os_network_is_external': {'value': 'True'},
+                'os_network_is_shared': {'value': 'True'}
+            })
+
+        self.b.create_subnet(self.context, self.subnet)
+
+        taskflow.engines.run(self.context.parent_flow,
+                             store=self.context.store)
+        assert self.infoblox.update_network_options.called_once
+
+    def test_nios_network_is_updated_for_external_os_network(self):
+        self.b.ea_manager.get_extattrs_for_network = mock.Mock(
+            return_value={
+                'os_network_is_external': {'value': 'True'},
+                'os_network_is_shared': {'value': 'False'}
+            })
+
+        self.b.create_subnet(self.context, self.subnet)
+
+        taskflow.engines.run(self.context.parent_flow,
+                             store=self.context.store)
+        assert self.infoblox.update_network_options.called_once
+
+    def test_exception_is_raised_if_network_is_private(self):
+        self.b.ea_manager.get_extattrs_for_network = mock.Mock(
+            return_value={
+                'os_network_is_external': {'value': 'False'},
+                'os_network_is_shared': {'value': 'False'}
+            })
+
+        self.b.create_subnet(self.context, self.subnet)
+
+        self.assertRaises(
+            ib_exceptions.InfobloxInternalPrivateSubnetAlreadyExist,
+            taskflow.engines.run,
+            self.context.parent_flow,
+            store=self.context.store
+        )
 
 
 class DeleteNetworkTestCase(base.BaseTestCase):

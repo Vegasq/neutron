@@ -71,7 +71,7 @@ class Network(object):
         self.infoblox_type = 'network'
         self.members = []
         self.options = []
-        self.member_ip_addr = None
+        self.member_ip_addrs = []
         self.infoblox_reference = None
         self.ref = None
 
@@ -83,7 +83,9 @@ class Network(object):
         net = Network()
         net.members = network_ib_object['members']
         net.options = network_ib_object['options']
-        net.member_ip_addr = net.members[0]['ipv4addr']
+
+        for member in net.members:
+            net.member_ip_addrs.append(member['ipv4addr'])
         net.ref = network_ib_object['_ref']
         return net
 
@@ -131,7 +133,7 @@ class Network(object):
     def update_member_ip_in_dns_nameservers(self, relay_ip):
         for opt in self.options:
             if self._is_dns_option(opt):
-                old_ip = self.member_ip_addr
+                old_ip = self.member_ip_addrs[0]
                 opt['value'] = opt['value'].replace(old_ip, relay_ip)
                 return
 

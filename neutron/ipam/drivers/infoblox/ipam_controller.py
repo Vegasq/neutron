@@ -78,10 +78,17 @@ class InfobloxIPAMController(neutron_ipam.NeutronIPAMController):
         cfg = self.config_finder.find_config_for_subnet(context, subnet)
         dhcp_members = cfg.reserve_dhcp_members()
         dns_members = cfg.reserve_dns_members()
-        infoblox_db.set_network_view(context, cfg.network_view,
-                                     s['network_id'])
+        network = self._get_network(context, subnet['network_id'])
+        create_infoblox_member = True
 
         create_subnet_flow = linear_flow.Flow('ib_create_subnet')
+
+        if self.infoblox.network_exists(cfg.network_view, subnet['cidr']):
+            create_subnet_flow.add(tasks.ChainInfobloxNetworkTask())
+            create_infoblox_member = False
+        else:
+            infoblox_db.set_network_view(context, cfg.network_view,
+                                         s['network_id'])
 
         # Neutron will sort this later so make sure infoblox copy is
         # sorted too.
@@ -93,7 +100,6 @@ class InfobloxIPAMController(neutron_ipam.NeutronIPAMController):
         # DNS relay IP.
         nameservers = [item.ip for item in dhcp_members] + user_nameservers
 
-        network = self._get_network(context, subnet['network_id'])
         network_extattrs = self.ea_manager.get_extattrs_for_network(
             context, subnet, network)
         method_arguments = {'obj_manip': self.infoblox,
@@ -127,7 +133,7 @@ class InfobloxIPAMController(neutron_ipam.NeutronIPAMController):
         if cfg.network_template:
             method_arguments['template'] = cfg.network_template
             create_subnet_flow.add(tasks.CreateNetworkFromTemplateTask())
-        else:
+        elif create_infoblox_member:
             create_subnet_flow.add(tasks.CreateNetworkTask())
 
         create_subnet_flow.add(tasks.CreateDNSViewTask())
@@ -165,9 +171,10 @@ class InfobloxIPAMController(neutron_ipam.NeutronIPAMController):
 
         user_nameservers = sorted(subnet.get('dns_nameservers', []))
         updated_nameservers = user_nameservers
-        if ib_network.member_ip_addr in ib_network.dns_nameservers:
+        if (ib_network.member_ip_addrs and
+                ib_network.member_ip_addrs[0] in ib_network.dns_nameservers):
             # Flat network, primary dns is member_ip
-            primary_dns = ib_network.member_ip_addr
+            primary_dns = ib_network.member_ip_addrs[0]
             updated_nameservers = [primary_dns] + user_nameservers
         else:
             # Network with relays, primary dns is relay_ip

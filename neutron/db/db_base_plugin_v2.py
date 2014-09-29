@@ -521,6 +521,7 @@ class NeutronCorePluginV2(neutron_plugin_base_v2.NeutronPluginBaseV2,
         a subnet_id then allocate an IP address accordingly.
         """
         p = port['port']
+        p['id'] = port_id
         ips = []
 
         fixed_configured = p['fixed_ips'] is not attributes.ATTR_NOT_SPECIFIED
@@ -1555,8 +1556,8 @@ class NeutronIPAMPlugin(NeutronCorePluginV2):
                     result = self.get_ipam_driver.allocate_ip(
                         context, p, ip={'subnet_id': s['id']})
                     if result:
-                        ips.append({'ip_address': result['ip_address'],
-                                    'subnet_id': result['subnet_id']})
+                        ips.append({'ip_address': result,
+                                    'subnet_id': s['id']})
         return ips
 
     def _update_subnet_dns_nameservers(self, context, id, s):

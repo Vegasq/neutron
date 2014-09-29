@@ -12,8 +12,11 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+import operator
 
 from taskflow import task
+
+from neutron.ipam.drivers.infoblox import exceptions
 
 
 class CreateNetViewTask(task.Task):
@@ -33,6 +36,25 @@ class CreateNetworkTask(task.Task):
 
     def revert(self, obj_manip, net_view_name, cidr, **kwargs):
         obj_manip.delete_network(net_view_name, cidr)
+
+
+class ChainInfobloxNetworkTask(task.Task):
+    def execute(self, obj_manip, net_view_name, cidr, network_extattrs):
+        ea_names = ['os_network_is_external', 'os_network_is_shared']
+
+        eas = operator.itemgetter(*ea_names)(network_extattrs)
+        shared_or_external = any(eval(ea['value']) for ea in eas)
+
+        if shared_or_external:
+            ib_network = obj_manip.get_network(net_view_name, cidr)
+            obj_manip.update_network_options(ib_network, network_extattrs)
+        else:
+            raise exceptions.InfobloxInternalPrivateSubnetAlreadyExist()
+
+    def revert(self, obj_manip, net_view_name, cidr, network_extattrs,
+               **kwargs):
+        # keep NIOS network untouched on rollback
+        pass
 
 
 class CreateNetworkFromTemplateTask(task.Task):
