@@ -104,3 +104,7 @@ class InfobloxConnectionError(exceptions.NeutronException):
 class InfobloxConfigException(exceptions.NeutronException):
     """Generic Infoblox Config Exception."""
     pass
+
+
+class InfobloxInternalPrivateSubnetAlreadyExist(exceptions.Conflict):
+    message = _("Network with the same CIDR already exists on NIOS.")

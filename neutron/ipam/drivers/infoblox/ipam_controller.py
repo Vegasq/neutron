@@ -78,10 +78,17 @@ class InfobloxIPAMController(neutron_ipam.NeutronIPAMController):
         cfg = self.config_finder.find_config_for_subnet(context, subnet)
         dhcp_members = cfg.reserve_dhcp_members()
         dns_members = cfg.reserve_dns_members()
-        infoblox_db.set_network_view(context, cfg.network_view,
-                                     s['network_id'])
+        network = self._get_network(context, subnet['network_id'])
+        create_infoblox_member = True
 
         create_subnet_flow = linear_flow.Flow('ib_create_subnet')
+
+        if self.infoblox.network_exists(cfg.network_view, subnet['cidr']):
+            create_subnet_flow.add(tasks.ChainInfobloxNetworkTask())
+            create_infoblox_member = False
+        else:
+            infoblox_db.set_network_view(context, cfg.network_view,
+                                         s['network_id'])
 
         # Neutron will sort this later so make sure infoblox copy is
         # sorted too.
@@ -94,7 +101,6 @@ class InfobloxIPAMController(neutron_ipam.NeutronIPAMController):
         nameservers = [item.ip for item in dns_members]
         nameservers += user_nameservers
 
-        network = self._get_network(context, subnet['network_id'])
         network_extattrs = self.ea_manager.get_extattrs_for_network(
             context, subnet, network)
         method_arguments = {'obj_manip': self.infoblox,
@@ -133,7 +139,7 @@ class InfobloxIPAMController(neutron_ipam.NeutronIPAMController):
         if cfg.network_template:
             method_arguments['template'] = cfg.network_template
             create_subnet_flow.add(tasks.CreateNetworkFromTemplateTask())
-        else:
+        elif create_infoblox_member:
             create_subnet_flow.add(tasks.CreateNetworkTask())
 
         create_subnet_flow.add(tasks.CreateDNSViewTask())
@@ -171,9 +177,10 @@ class InfobloxIPAMController(neutron_ipam.NeutronIPAMController):
 
         user_nameservers = sorted(subnet.get('dns_nameservers', []))
         updated_nameservers = user_nameservers
-        if ib_network.member_ip_addr in ib_network.dns_nameservers:
+        if (ib_network.member_ip_addrs and
+                ib_network.member_ip_addrs[0] in ib_network.dns_nameservers):
             # Flat network, primary dns is member_ip
-            primary_dns = ib_network.member_ip_addr
+            primary_dns = ib_network.member_ip_addrs[0]
             updated_nameservers = [primary_dns] + user_nameservers
         else:
             # Network with relays, primary dns is relay_ip
@@ -233,10 +240,14 @@ class InfobloxIPAMController(neutron_ipam.NeutronIPAMController):
         zone_auth = self.pattern_builder(cfg.domain_suffix_pattern).build(
             context, subnets)
 
-        if ip:
+        if ip and ip.get('ip_address', None):
+            subnet_id = ip.get('subnet_id', None)
+            ip_to_be_allocated = ip.get('ip_address', None)
             allocated_ip = self.ip_allocator.allocate_given_ip(
-                networkview_name, dnsview_name, zone_auth, hostname, mac, ip,
-                extattrs)
+                networkview_name, dnsview_name, zone_auth, hostname, mac,
+                ip_to_be_allocated, extattrs)
+            allocated_ip = {'subnet_id': subnet_id,
+                            'ip_address': allocated_ip}
         else:
             # Allocate next available considering IP ranges.
             ip_ranges = subnets['allocation_pools']
@@ -249,6 +260,9 @@ class InfobloxIPAMController(neutron_ipam.NeutronIPAMController):
                     allocated_ip = self.ip_allocator.allocate_ip_from_range(
                         dnsview_name, networkview_name, zone_auth, hostname,
                         mac, first_ip, last_ip, extattrs)
+                    allocated_ip = {'subnet_id': subnets['id'],
+                                    'ip_address': allocated_ip}
+
                     break
                 except exceptions.InfobloxCannotAllocateIp:
                     LOG.debug("No more free IP's in slice %s-%s." % (first_ip,
@@ -264,7 +278,7 @@ class InfobloxIPAMController(neutron_ipam.NeutronIPAMController):
         for member in cfg.dhcp_members:
             self.infoblox.restart_all_services(member)
 
-        return {'ip_address': allocated_ip, 'subnet_id': subnets['id']}
+        return allocated_ip
 
     def deallocate_ip(self, context, subnet, port, ip):
         cfg = self.config_finder.find_config_for_subnet(context, subnet)
