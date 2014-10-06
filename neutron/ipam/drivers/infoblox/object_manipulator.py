@@ -229,11 +229,14 @@ class InfobloxObjectManipulator(object):
         return objects.Network.from_dict(net)
 
     def network_exists(self, net_view_name, cidr):
+        net_data = {'network_view': net_view_name, 'network': cidr}
         try:
-            self.get_network(net_view_name, cidr)
-        except exc.InfobloxNetworkNotAvailable:
-            return False
-        return True
+            net = self._get_infoblox_object_or_none(
+                'network', net_data, return_fields=['options', 'members'])
+        except exc.InfobloxSearchError:
+            net = None
+
+        return net is not None
 
     def bind_name_with_host_record(self, dnsview_name, ip, name):
         record_host = {

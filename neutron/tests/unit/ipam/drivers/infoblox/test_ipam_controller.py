@@ -245,7 +245,13 @@ class DeallocateIPTestCase(base.BaseTestCase):
         super(DeallocateIPTestCase, self).setUp()
 
         self.infoblox = mock.Mock()
-        config_finder = mock.Mock()
+
+        cfg  = mock.Mock()
+        cfg.dhcp_members = ['172.25.1.1']
+
+        config_finder = mock.MagicMock()
+        config_finder.find_config_for_subnet = mock.Mock(return_value=cfg)
+
         context = mock.MagicMock()
         self.ip_allocator = mock.Mock()
 
@@ -268,7 +274,7 @@ class DeallocateIPTestCase(base.BaseTestCase):
             mock.ANY, mock.ANY, self.ip)
 
     def test_dns_and_dhcp_services_restarted(self):
-        self.infoblox.restart_all_services.assert_called_once_with(mock.ANY)
+        assert self.infoblox.restart_all_services.called_once
 
 
 class NetOptionsMatcher(object):

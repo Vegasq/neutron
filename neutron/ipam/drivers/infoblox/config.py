@@ -261,12 +261,12 @@ class Config(object):
         return 'default'
 
     @property
-    def dhcp_member(self):
-        return self._get_member(ib_models.DHCP_MEMBER_TYPE)
+    def dhcp_members(self):
+        return self._get_members(ib_models.DHCP_MEMBER_TYPE)
 
     @property
-    def dns_member(self):
-        return self._get_member(ib_models.DNS_MEMBER_TYPE)
+    def dns_members(self):
+        return self._get_members(ib_models.DNS_MEMBER_TYPE)
 
     @property
     def is_global_config(self):
@@ -318,12 +318,12 @@ class Config(object):
             raise exceptions.OperationNotAllowed(
                 reason="subnet_name is in domain name pattern")
 
-    def _get_member(self, member_type):
-        member = self.member_manager.find_member(
+    def _get_members(self, member_type):
+        members = self.member_manager.find_members(
             self.context, self.network_view, member_type)
 
-        if member is not None:
-            return member
+        if members:
+            return members
 
         msg = ("Looks like you're trying to call config.{member_type}_member "
                "without reserving one. You should call "
@@ -360,9 +360,10 @@ class Config(object):
         return member
 
     def _reserve_member(self, members, template, member_type):
-        member = self.member_manager.find_member(self.context,
-                                                 self.network_view,
-                                                 member_type)
+        member = self.member_manager.find_members(self.context,
+                                                  self.network_view,
+                                                  member_type)
+
         if member:
             return member
 
@@ -419,18 +420,6 @@ class MemberManager(object):
     def reserve_member(self, context, mapping, member_name, member_type):
         ib_db.attach_member(context, mapping, member_name, member_type)
 
-    def find_member(self, context, mapping, member_type):
-        member_name = ib_db.get_member(context, mapping, member_type)
-        if member_name:
-            for member in self.available_members:
-                if member.name == member_name:
-                    return member
-            else:
-                raise exceptions.ReservedMemberNotAvailableInConfig(
-                    member_name=member_name,
-                    config=neutron_conf.CONF.infoblox_members_config)
-        return None
-
     def release_member(self, context, mapping):
         ib_db.delete_members(context, mapping)
 
@@ -439,3 +428,26 @@ class MemberManager(object):
             if member.name == member_name:
                 return member
         raise exceptions.NoInfobloxMemberAvailable()
+
+    def _get_reserved_conf_members(self, exists_members):
+        members = []
+
+        if not exists_members:
+            return members
+
+        for exists_member in exists_members:
+            for member in self.available_members:
+                if member.name == exists_member:
+                    members.append(member)
+
+        if not members:
+            raise exceptions.ReservedMemberNotAvailableInConfig(
+                member_name=", ".join(exists_members),
+                config=neutron_conf.CONF.infoblox_members_config)
+
+        return members
+
+    def find_members(self, context, mapping, member_type):
+        exists_members = ib_db.get_members(context, mapping, member_type)
+        members = self._get_reserved_conf_members(exists_members)
+        return members

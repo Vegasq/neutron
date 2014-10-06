@@ -303,8 +303,8 @@ class ConfigTestCase(base.BaseTestCase):
         subnet = mock.Mock()
 
         expected_member_name = 'some-dhcp-member.com'
-        expected_dhcp_member = objects.Member(name=expected_member_name,
-                                              ip='some-ip')
+        expected_dhcp_member = [objects.Member(name=expected_member_name,
+                                               ip='some-ip')]
 
         conf_dict = {
             'condition': 'global',
@@ -312,11 +312,11 @@ class ConfigTestCase(base.BaseTestCase):
         }
 
         member_manager = mock.Mock()
-        member_manager.find_member.return_value = expected_dhcp_member
+        member_manager.find_members.return_value = expected_dhcp_member
         cfg = config.Config(conf_dict, context, subnet, member_manager)
 
-        self.assertEqual(cfg.dhcp_member, expected_dhcp_member)
-        assert member_manager.find_member.called
+        self.assertEqual(cfg.dhcp_members, expected_dhcp_member)
+        assert member_manager.find_members.called
         assert not member_manager.next_available.called
         assert not member_manager.reserve_member.called
 
@@ -327,7 +327,7 @@ class ConfigTestCase(base.BaseTestCase):
         expected_member = objects.Member('some-member-ip', 'some-member-name')
 
         member_manager = mock.Mock()
-        member_manager.find_member.return_value = None
+        member_manager.find_members.return_value = None
         member_manager.next_available.return_value = expected_member
 
         conf_dict = {
@@ -338,7 +338,7 @@ class ConfigTestCase(base.BaseTestCase):
         cfg = config.Config(conf_dict, context, subnet, member_manager)
         members = cfg.reserve_dhcp_members()
         self.assertEqual(members[0], expected_member)
-        assert member_manager.find_member.called_once
+        assert member_manager.find_members.called_once
         assert member_manager.next_available.called_once
         assert member_manager.reserve_meber.called_once
 
@@ -423,7 +423,7 @@ class ConfigTestCase(base.BaseTestCase):
 
         member_manager = mock.Mock()
         member_manager.get_member = mock_get_member
-        member_manager.find_member = mock.Mock(return_value=None)
+        member_manager.find_members = mock.Mock(return_value=None)
 
         cfg = config.Config(conf, context, subnet, member_manager)
         cfg._dhcp_members = members
@@ -591,20 +591,20 @@ class MemberManagerTestCase(base.BaseTestCase):
     def test_finds_member_for_mapping(self):
         context = mock.Mock()
         mapping = 'some-mapping-value'
-        expected_member = 'member1'
+        expected_member = ['member1']
         expected_ip = '10.0.0.1'
 
         mm = config.MemberManager(
-            io.BytesIO(jsonutils.dumps([{'name': expected_member,
+            io.BytesIO(jsonutils.dumps([{'name': expected_member[0],
                                     'ipv4addr': expected_ip}])))
 
-        with mock.patch.object(infoblox_db, 'get_member') as get_mock:
+        with mock.patch.object(infoblox_db, 'get_members') as get_mock:
             get_mock.return_value = expected_member
-            member = mm.find_member(context, mapping,
-                                    models.DHCP_MEMBER_TYPE)
+            member = mm.find_members(context, mapping,
+                                     models.DHCP_MEMBER_TYPE)
 
-            self.assertEqual(expected_ip, member.ip)
-            self.assertEqual(expected_member, member.name)
+            self.assertEqual(expected_ip, member[0].ip)
+            self.assertEqual(expected_member[0], member[0].name)
 
     def test_builds_member_from_config(self):
         ip = 'some-ip'

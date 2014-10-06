@@ -267,7 +267,8 @@ class InfobloxIPAMController(neutron_ipam.NeutronIPAMController):
         self.ip_allocator.deallocate_ip(cfg.network_view, cfg.dns_view, ip)
         self.ib_db.delete_ip_allocation(context, net_id, subnet, ip)
 
-        self.infoblox.restart_all_services(cfg.dhcp_member)
+        for member in set(cfg.dhcp_members):
+            self.infoblox.restart_all_services(member)
 
     def set_dns_nameservers(self, context, port):
         # Replace member IP in DNS nameservers by DNS relay IP.

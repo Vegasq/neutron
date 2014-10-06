@@ -32,16 +32,16 @@ def get_used_members(context, member_type):
     return [m.member_name for m in members]
 
 
-def get_member(context, map_id, member_type):
+def get_members(context, map_id, member_type):
     """Returns names of members used by currently used mapping (tenant id,
     network id or Infoblox netview name).
     """
     q = context.session.query(models.InfobloxMemberMap)
 
-    member = q.filter_by(map_id=map_id, member_type=member_type).first()
+    members = q.filter_by(map_id=map_id, member_type=member_type).all()
 
-    if member:
-        return member.member_name
+    if members:
+        return [member.member_name for member in members]
 
     return None
 
