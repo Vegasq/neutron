@@ -98,7 +98,8 @@ class InfobloxIPAMController(neutron_ipam.NeutronIPAMController):
         # the beginning of the list.
         # If this net is not flat, Member IP will later be replaced by
         # DNS relay IP.
-        nameservers = [item.ip for item in dhcp_members] + user_nameservers
+        nameservers = [item.ip for item in dns_members]
+        nameservers += user_nameservers
 
         network_extattrs = self.ea_manager.get_extattrs_for_network(
             context, subnet, network)
@@ -259,7 +260,11 @@ class InfobloxIPAMController(neutron_ipam.NeutronIPAMController):
                     netview=networkview_name, cidr=subnets['cidr'])
 
         LOG.debug('IP address allocated on Infoblox NIOS: %s', allocated_ip)
-        return {'ip_address': allocated_ip, 'subnet_id': subnets['id']}
+
+        for member in set(cfg.dhcp_members):
+            self.infoblox.restart_all_services(member)
+
+        return allocated_ip
 
     def deallocate_ip(self, context, subnet, port, ip):
         cfg = self.config_finder.find_config_for_subnet(context, subnet)

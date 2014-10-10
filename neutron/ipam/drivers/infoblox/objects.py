@@ -133,8 +133,7 @@ class Network(object):
     def update_member_ip_in_dns_nameservers(self, relay_ip):
         for opt in self.options:
             if self._is_dns_option(opt):
-                old_ip = self.member_ip_addrs[0]
-                opt['value'] = opt['value'].replace(old_ip, relay_ip)
+                opt['value'] = relay_ip
                 return
 
     def to_dict(self):
