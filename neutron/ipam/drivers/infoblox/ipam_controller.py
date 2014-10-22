@@ -108,7 +108,9 @@ class InfobloxIPAMController(neutron_ipam.NeutronIPAMController):
                             'network_extattrs': network_extattrs,
                             'dhcp_trel_ip': infoblox_db.get_management_net_ip(
                                 context,
-                                subnet['network_id'])}
+                                subnet['network_id']),
+                            'related_members': set(cfg.dhcp_members +
+                                                   cfg.dns_members)}
 
         if not cfg.is_external and cfg.require_dhcp_relay:
             for member in dhcp_members:
@@ -187,6 +189,7 @@ class InfobloxIPAMController(neutron_ipam.NeutronIPAMController):
                                                        network)
         self.infoblox.update_network_options(ib_network, eas)
 
+        self.restart_services(context, subnet=subnet)
         return backend_subnet
 
     def delete_subnet(self, context, subnet):
@@ -195,6 +198,7 @@ class InfobloxIPAMController(neutron_ipam.NeutronIPAMController):
 
         cfg = self.config_finder.find_config_for_subnet(context, subnet)
         network = self._get_network(context, subnet['network_id'])
+        members_to_restart = list(set(cfg.dhcp_members + cfg.dns_members))
 
         self.infoblox.delete_network(cfg.network_view, cidr=subnet['cidr'])
 
@@ -212,6 +216,7 @@ class InfobloxIPAMController(neutron_ipam.NeutronIPAMController):
                 and not self.infoblox.has_dns_zones(preconf_dns_view)):
             self.infoblox.delete_dns_view(preconf_dns_view)
 
+        self.restart_services(context, members=members_to_restart)
         return deleted_subnet
 
     def allocate_ip(self, context, subnets, port, ip=None):
@@ -256,7 +261,8 @@ class InfobloxIPAMController(neutron_ipam.NeutronIPAMController):
                     netview=networkview_name, cidr=subnets['cidr'])
 
         LOG.debug('IP address allocated on Infoblox NIOS: %s', allocated_ip)
-        self.infoblox.restart_all_services(cfg.dhcp_member)
+        for member in cfg.dhcp_members:
+            self.infoblox.restart_all_services(member)
 
         return {'ip_address': allocated_ip, 'subnet_id': subnets['id']}
 
@@ -326,3 +332,15 @@ class InfobloxIPAMController(neutron_ipam.NeutronIPAMController):
             if fixed_address_ref is not None:
                 self.infoblox.delete_object_by_ref(fixed_address_ref)
                 self.ib_db.delete_management_ip(context, network_id)
+
+    def restart_services(self, context, members=None, subnet=None):
+        if not members:
+            members = []
+
+        if subnet:
+            cfg = self.config_finder.find_config_for_subnet(context, subnet)
+            for member in set(cfg.dhcp_members + cfg.dns_members):
+                members.append(member)
+
+        for member in set(members):
+            self.infoblox.restart_all_services(member)

@@ -27,12 +27,17 @@ class CreateNetViewTask(task.Task):
 
 class CreateNetworkTask(task.Task):
     def execute(self, obj_manip, net_view_name, cidr, nameservers, dhcp_member,
-                gateway_ip, network_extattrs, dhcp_trel_ip):
+                gateway_ip, network_extattrs, related_members, dhcp_trel_ip):
         obj_manip.create_network(net_view_name, cidr, nameservers, dhcp_member,
                                  gateway_ip, dhcp_trel_ip, network_extattrs)
+        for member in related_members:
+            obj_manip.restart_all_services(member)
 
-    def revert(self, obj_manip, net_view_name, cidr, **kwargs):
+    def revert(self, obj_manip, net_view_name, related_members, cidr,
+               **kwargs):
         obj_manip.delete_network(net_view_name, cidr)
+        for member in related_members:
+            obj_manip.restart_all_services(member)
 
 
 class CreateNetworkFromTemplateTask(task.Task):
