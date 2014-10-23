@@ -35,7 +35,8 @@ class InfobloxObjectManipulator(object):
         return self._create_infoblox_object('view', dns_view_data)
 
     def create_network(self, net_view_name, cidr, nameservers=None,
-                       members=None, gateway_ip=None, network_extattrs=None):
+                       members=None, gateway_ip=None, dhcp_trel_ip=None,
+                       network_extattrs=None):
         network_data = {'network_view': net_view_name,
                         'network': cidr,
                         'extattrs': network_extattrs}
@@ -54,6 +55,12 @@ class InfobloxObjectManipulator(object):
         if gateway_ip:
             dhcp_options.append({'name': 'routers',
                                  'value': gateway_ip})
+
+        if dhcp_trel_ip:
+            dhcp_options.append({'name': 'dhcp-server-identifier',
+                                         'num': 54,
+                                         'value': dhcp_trel_ip})
+
         if dhcp_options:
             network_data['options'] = dhcp_options
 

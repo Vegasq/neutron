@@ -113,7 +113,10 @@ class InfobloxIPAMController(neutron_ipam.NeutronIPAMController):
                             'nameservers': nameservers,
                             'network_extattrs': network_extattrs,
                             'related_members': set(cfg.dhcp_members +
-                                                   cfg.dns_members)}
+                                                   cfg.dns_members),
+                            'dhcp_trel_ip': infoblox_db.get_management_net_ip(
+                                context,
+                                subnet['network_id'])}
 
         if not cfg.is_external and cfg.require_dhcp_relay:
             for member in dhcp_members:

@@ -126,8 +126,6 @@ class NeutronIPAMController(base.IPAMController):
             neutron_db.allocate_specific_ip(context, subnet_id, ip)
             return ip_address
         else:
-            if isinstance(subnet, models_v2.Subnet):
-                subnet = [subnet]
             return neutron_db.generate_ip(context, subnet)
 
     def deallocate_ip(self, context, backend_subnet, host, ip_address):

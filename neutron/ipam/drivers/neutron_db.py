@@ -78,13 +78,13 @@ def generate_ip(context, subnet):
     return _try_generate_ip(context, subnet)
 
 
-def allocate_specific_ip(context, subnet, ip_address):
+def allocate_specific_ip(context, subnet_id, ip_address):
     """Allocate a specific IP address on the subnet."""
     ip = int(netaddr.IPAddress(ip_address))
     range_qry = context.session.query(
         models_v2.IPAvailabilityRange).join(
             models_v2.IPAllocationPool).with_lockmode('update')
-    results = range_qry.filter_by(subnet_id=subnet.id)
+    results = range_qry.filter_by(subnet_id=subnet_id)
     for range in results:
         first = int(netaddr.IPAddress(range['first_ip']))
         last = int(netaddr.IPAddress(range['last_ip']))
