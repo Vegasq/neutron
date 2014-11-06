@@ -12,15 +12,19 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-import socket
+import logging
+import netaddr
 
 import neutron.ipam.drivers.infoblox.exceptions as ib_exc
 
 
+LOG = logging.getLogger(__name__)
+
+
 def is_valid_ip(ip):
     try:
-        socket.inet_aton(ip)
-    except socket.error:
+        netaddr.IPAddress(ip)
+    except netaddr.core.AddrFormatError:
         return False
 
     return True
@@ -76,7 +80,7 @@ class Network(object):
         self.ref = None
 
     def __repr__(self):
-        return "{}".format(self.to_dict())
+        return "{0}".format(self.to_dict())
 
     @staticmethod
     def from_dict(network_ib_object):
@@ -158,7 +162,31 @@ class IPAllocationObject(object):
                 '{first_ip:}-{last_ip:s},{net_view_name:s}').format(**locals())
 
 
-class HostRecordIPv4(IPAllocationObject):
+class HostRecord(IPAllocationObject):
+    def __init__(self):
+        self.infoblox_type = 'record:host'
+        self.hostname = None
+        self._zone_auth = None
+        self.mac = None
+        self.ip = None
+        self.dns_view = None
+        self.ref = None
+        self.ip_version = None
+
+    def __repr__(self):
+        return "{0}".format(self.to_dict())
+
+    @property
+    def zone_auth(self):
+        return self._zone_auth
+
+    @zone_auth.setter
+    def zone_auth(self, value):
+        if value:
+            self._zone_auth = value.lstrip('.')
+
+
+class HostRecordIPv6(HostRecord):
     """Sample Infoblox host record object in JSON format:
     {
         "_ref": "record:host/ZG5zLmhvc3QkLjY3OC5jb20uZ2xvYmFsLmNsb3VkLnRl
@@ -178,36 +206,86 @@ class HostRecordIPv4(IPAllocationObject):
         ]
     }
     """
-    def __init__(self):
-        self.infoblox_type = 'record:host'
-        self.hostname = None
-        self._zone_auth = None
-        self.mac = None
-        self.ip = None
-        self.dns_view = None
-        self.ref = None
-
-    def __repr__(self):
-        return "{}".format(self.to_dict())
+    return_fields = ['ipv6addrs']
 
     def to_dict(self):
-        return {
+        result = {
             'view': self.dns_view,
             'name': '.'.join([self.hostname, self.zone_auth]),
-            'ipv4addrs': [{
-                    'mac': self.mac,
-                    'configure_for_dhcp': True,
-                    'ipv4addr': self.ip}
-            ]
         }
 
-    return_fields = [
-        'ipv4addrs',
-    ]
+        result['ipv6addrs'] = [{
+            'configure_for_dhcp': True,
+            'ipv6addr': self.ip,
+            'duid': '00:03:00:06:%s' % self.mac
+        }]
+
+        return result
 
     @staticmethod
     def from_dict(hr_dict):
-        ipv4addrs = hr_dict.get('ipv4addrs')
+        ipv6addrs = hr_dict.get('ipv6addrs', None)
+        if not ipv6addrs:
+            raise ib_exc.HostRecordNoIPv6Addrs()
+
+        ipv6addr = ipv6addrs[0]
+        ip = ipv6addr['ipv6addr']
+        if not is_valid_ip(ip):
+            raise ib_exc.InfobloxInvalidIp(ip=ip)
+        host = ipv6addr.get('host', 'unknown.unknown')
+        mac = ipv6addr.get('mac')
+
+        hostname, _, dns_zone = host.partition('.')
+
+        host_record = HostRecordIPv6()
+        host_record.hostname = hostname
+        host_record.zone_auth = dns_zone
+        host_record.mac = mac
+        host_record.ip = ip
+        host_record.ref = hr_dict.get('_ref')
+
+        return host_record
+
+
+class HostRecordIPv4(HostRecord):
+    """Sample Infoblox host record object in JSON format:
+    {
+        "_ref": "record:host/ZG5zLmhvc3QkLjY3OC5jb20uZ2xvYmFsLmNsb3VkLnRl
+                 :test_host_name.testsubnet.cloud.global.com/
+                 default.687401e9f7a7471abbf301febf99854e",
+        "ipv4addrs": [
+            {
+                "_ref": "record:host_ipv4addr/ZG5zLmhvc3RfYWRkcmVzcyQuNjc4L
+                         :192.168.0.5/
+                         test_host_name.testsubnet.cloud.global.com/
+                         default.687401e9f7a7471abbf301febf99854e",
+                "configure_for_dhcp": false,
+                "host": "test_host_name.testsubnet.cloud.global.com",
+                "ipv4addr": "192.168.0.5",
+                "mac": "aa:bb:cc:dd:ee:ff"
+            }
+        ]
+    }
+    """
+    return_fields = ['ipv4addrs']
+
+    def to_dict(self):
+        result = {
+            'view': self.dns_view,
+            'name': '.'.join([self.hostname, self.zone_auth]),
+        }
+
+        result['ipv4addrs'] = [{
+            'mac': self.mac,
+            'configure_for_dhcp': True,
+            'ipv4addr': self.ip}
+        ]
+
+        return result
+
+    @staticmethod
+    def from_dict(hr_dict):
+        ipv4addrs = hr_dict.get('ipv4addrs', None)
         if not ipv4addrs:
             raise ib_exc.HostRecordNoIPv4Addrs()
 
@@ -215,10 +293,10 @@ class HostRecordIPv4(IPAllocationObject):
         ip = ipv4addr['ipv4addr']
         if not is_valid_ip(ip):
             raise ib_exc.InfobloxInvalidIp(ip=ip)
-
         host = ipv4addr.get('host', 'unknown.unknown')
-        hostname, _, dns_zone = host.partition('.')
         mac = ipv4addr.get('mac')
+
+        hostname, _, dns_zone = host.partition('.')
 
         host_record = HostRecordIPv4()
         host_record.hostname = hostname
@@ -229,15 +307,6 @@ class HostRecordIPv4(IPAllocationObject):
 
         return host_record
 
-    @property
-    def zone_auth(self):
-        return self._zone_auth
-
-    @zone_auth.setter
-    def zone_auth(self, value):
-        if value:
-            self._zone_auth = value.lstrip('.')
-
 
 class FixedAddress(IPAllocationObject):
     def __init__(self):
@@ -245,18 +314,30 @@ class FixedAddress(IPAllocationObject):
         self.ip = None
         self.net_view = None
         self.mac = None
+        self.duid = None
         self.extattrs = None
         self.ref = None
 
     def __repr__(self):
-        return "FixedAddress({})".format(self.to_dict())
+        return "FixedAddress({0})".format(self.to_dict())
 
+
+class FixedAddressIPv4(FixedAddress):
+    infoblox_type = 'fixedaddress'
     return_fields = [
         'ipv4addr',
         'mac',
         'network_view',
         'extattrs'
     ]
+
+    def to_dict(self):
+        return {
+            'mac': self.mac,
+            'network_view': self.net_view,
+            'ipv4addr': self.ip,
+            'extattrs': self.extattrs
+        }
 
     @staticmethod
     def from_dict(fixed_address_dict):
@@ -273,13 +354,38 @@ class FixedAddress(IPAllocationObject):
 
         return fa
 
+
+class FixedAddressIPv6(FixedAddress):
+    infoblox_type = 'ipv6fixedaddress'
+    return_fields = [
+        'ipv6addr',
+        'duid',
+        'network_view',
+        'extattrs'
+    ]
+
     def to_dict(self):
         return {
-            'mac': self.mac,
+            'duid': '00:03:00:06:%s' % self.mac,
             'network_view': self.net_view,
-            'ipv4addr': self.ip,
+            'ipv6addr': self.ip,
             'extattrs': self.extattrs
         }
+
+    @staticmethod
+    def from_dict(fixed_address_dict):
+        ip = fixed_address_dict.get('ipv6addr')
+        if not is_valid_ip(ip):
+            raise ib_exc.InfobloxInvalidIp(ip=ip)
+
+        fa = FixedAddress()
+        fa.ip = ip
+        fa.mac = fixed_address_dict.get('mac')
+        fa.net_view = fixed_address_dict.get('network_view')
+        fa.extattrs = fixed_address_dict.get('extattrs')
+        fa.ref = fixed_address_dict.get('_ref')
+
+        return fa
 
 
 class Member(object):

@@ -137,6 +137,8 @@ def _try_generate_ip(context, subnets):
     The IP address will be generated from one of the subnets defined on
     the network.
     """
+    if type(subnets) is not list:
+        subnets = [subnets]
     range_qry = context.session.query(
         models_v2.IPAvailabilityRange).join(
             models_v2.IPAllocationPool).with_lockmode('update')

@@ -148,7 +148,7 @@ class InfobloxDNSController(neutron_ipam.NeutronDNSController):
             'dnsview_name': cfg.dns_view,
             'fqdn': dns_zone,
             'cidr': backend_subnet['cidr'],
-            'zone_format': 'IPV4',
+            'zone_format': 'IPV%s' % backend_subnet['ip_version'],
             'obj_manip': self.infoblox
         }
         create_dns_zones_flow = linear_flow.Flow('create-dns-zones')
