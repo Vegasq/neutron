@@ -141,6 +141,8 @@ class PatternBuilder(object):
         if ip_addr:
             octets = ip_addr.split('.')
             pattern_dict['ip_address'] = ip_addr.replace('.', '-')
+            pattern_dict['ip_address'] = pattern_dict['ip_address'].replace(
+                ':', '_')
             for i in xrange(len(octets)):
                 octet_key = 'ip_address_octet{i}'.format(i=(i + 1))
                 pattern_dict[octet_key] = octets[i]
@@ -398,7 +400,8 @@ class MemberManager(object):
 
             try:
                 self.available_members = map(
-                    lambda m: objects.Member(name=m['name'], ip=m['ipv4addr']),
+                    lambda m: objects.Member(name=m['name'], ip=m['ipv4addr'],
+                                             ipv6=m['ipv6addr']),
                     filter(lambda m: m.get('is_available', True), all_members))
             except KeyError as key:
                 raise exceptions.InvalidMemberConfig(key=key)

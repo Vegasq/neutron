@@ -89,6 +89,7 @@ class UpdateSubnetTestCase(base.BaseTestCase):
         config_finder = mock.Mock()
         self.ipam = ipam_controller.InfobloxIPAMController(
             self.object_manipulator, config_finder, ip_allocator)
+        self.ipam.ea_manager = mock.Mock()
 
         self.sub_id = 'fake-id'
         self.new_nameservers = ['new_serv1', 'new_serv2']
@@ -161,7 +162,7 @@ class UpdateSubnetTestCase(base.BaseTestCase):
 class AllocateIPTestCase(base.BaseTestCase):
     def test_host_record_created_on_allocate_ip(self):
         infoblox = mock.Mock()
-        member_config = mock.Mock()
+        member_config = mock.MagicMock()
         ip_allocator = mock.Mock()
         context = mock.Mock()
 
@@ -170,7 +171,7 @@ class AllocateIPTestCase(base.BaseTestCase):
         mac = 'aa:bb:cc:dd:ee:ff'
         port = {'id': hostname,
                 'mac_address': mac}
-        ip = '192.168.1.1'
+        ip = {'ip_address': '192.168.1.1'}
 
         b = ipam_controller.InfobloxIPAMController(infoblox,
                                                    member_config,
@@ -181,21 +182,25 @@ class AllocateIPTestCase(base.BaseTestCase):
         b.allocate_ip(context, subnet, port, ip)
 
         ip_allocator.allocate_given_ip.assert_called_once_with(
-            mock.ANY, mock.ANY, mock.ANY, hostname, mac, ip, mock.ANY)
+            mock.ANY, mock.ANY, mock.ANY, hostname, mac, ip['ip_address'],
+            mock.ANY)
 
     def test_host_record_from_range_created_on_allocate_ip(self):
         infoblox = mock.Mock()
-        member_config = mock.Mock()
+        member_config = mock.MagicMock()
         ip_allocator = mock.Mock()
         context = mock.Mock()
 
         hostname = 'fake port id'
         first_ip = '192.168.1.1'
         last_ip = '192.168.1.132'
-        subnet = {'allocation_pools': [{'first_ip': first_ip,
-                                        'last_ip': last_ip}],
-                  'tenant_id': 'some-id',
-                  'id': 'some-id'}
+
+        subnet = mock.MagicMock()
+        subnet.id = 'some-id'
+        subnet.tenant_id = 'some-id'
+        subnet.allocation_pools = [{'first_ip': first_ip,
+                                   'last_ip': last_ip}]
+
         mac = 'aa:bb:cc:dd:ee:ff'
         port = {'id': hostname,
                 'mac_address': mac}

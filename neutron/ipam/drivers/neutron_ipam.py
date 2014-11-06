@@ -120,14 +120,14 @@ class NeutronIPAMController(base.IPAMController):
             query.delete()
 
     def allocate_ip(self, context, subnet, host, ip=None):
-        if ip is not None:
+        if ip is not None and 'ip_address' in ip:
             subnet_id = subnet['id']
-            ip_address = {'subnet_id': subnet_id, 'ip_address': ip}
-            neutron_db.allocate_specific_ip(context, subnet_id, ip)
+            ip_address = {'subnet_id': subnet_id,
+                          'ip_address': ip['ip_address']}
+            neutron_db.allocate_specific_ip(
+                context, subnet_id, ip['ip_address'])
             return ip_address
         else:
-            if isinstance(subnet, models_v2.Subnet):
-                subnet = [subnet]
             return neutron_db.generate_ip(context, subnet)
 
     def deallocate_ip(self, context, backend_subnet, host, ip_address):
@@ -361,10 +361,11 @@ class NeutronIPAM(base.IPAMManager):
                 context,
                 backend_subnet,
                 host,
-                ip.get('ip_address', None))
+                ip)
 
             LOG.debug('IPAMManager allocate IP: %s' % ip_address)
             mac_address = host['mac_address']
+
             self.dhcp_controller.bind_mac(
                 context,
                 backend_subnet,

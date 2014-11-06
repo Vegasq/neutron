@@ -150,6 +150,11 @@ class HostRecordNoIPv4Addrs(InfobloxObjectParsingError):
                 "are absent.")
 
 
+class HostRecordNoIPv6Addrs(InfobloxObjectParsingError):
+    message = _("Cannot parse Host Record object from dict because 'ipv6addrs'"
+                "are absent.")
+
+
 class InfobloxInvalidIp(InfobloxObjectParsingError):
     message = _("Bad IP address: %(ip)s")
 
