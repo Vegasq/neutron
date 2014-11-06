@@ -14,7 +14,6 @@
 #    under the License.
 import os
 import random
-import socket
 
 import netaddr
 from oslo.config import cfg
@@ -48,7 +47,10 @@ OPTS = [
                help=_('Path to dhcrelay executable.')),
     cfg.BoolOpt('use_link_selection_option',
                 default=True,
-                help=_('Run dhcrelay with -l flag.')),
+                help=_('Run dhcrelay with -o flag.')),
+    cfg.BoolOpt('use_ipv6_unicast_requests',
+                default=True,
+                help=_('Run dhcrelay with -o flag.')),
     cfg.StrOpt('dhcp_relay_management_network',
                default=None,
                help=_("CIDR for the management network served by "
@@ -70,6 +72,8 @@ class DhcpDnsProxy(dhcp.DhcpLocalProcess):
     MINIMUM_VERSION = 0
     DEV_NAME_LEN = 14
     RELAY_DEV_NAME_PREFIX = 'trel'
+    DHCPv4 = 4
+    DHCPv6 = 6
 
     def _calc_dev_name_len(self):
         if self.conf.interface_dev_name_len:
@@ -141,12 +145,18 @@ class DhcpDnsProxy(dhcp.DhcpLocalProcess):
         """Force the DHCP server to reload the assignment database."""
         pass
 
-    @property
-    def dhcp_active(self):
-        pid = self.dhcp_pid
-        if not pid:
+    def is_dhcp_active(self):
+        """Is any dhcprelay still active"""
+        pids = [self.get_dhcp_pid(vaersion=DhcpDnsProxy.DHCPv4),
+                self.get_dhcp_pid(vaersion=DhcpDnsProxy.DHCPv6)]
+
+        if not any(pids):
             return False
-        return os.path.isdir('/proc/%s/' % pid)
+
+        for pid in pids:
+            if pid and os.path.isdir('/proc/%s/' % pid):
+                return True
+        return False
 
     @property
     def dns_active(self):
@@ -164,9 +174,8 @@ class DhcpDnsProxy(dhcp.DhcpLocalProcess):
             relay_iface_mac_address,
             self.conf.dhcp_relay_bridge)
 
-        interface_name = self.device_manager.setup(self.network,
-                                                   reuse_existing=True)
-        if self.dhcp_active or self.dns_active:
+        interface_name = self.device_manager.setup(self.network)
+        if self.is_dhcp_active() or self.dns_active:
             self.restart()
         elif self._enable_dns_dhcp():
             self.interface_name = interface_name
@@ -174,17 +183,24 @@ class DhcpDnsProxy(dhcp.DhcpLocalProcess):
 
     def disable(self, retain_port=False):
         def kill_proc(pid):
+            if not pid:
+                return
             cmd = ['kill', '-9', pid]
             utils.execute(cmd, self.root_helper)
 
-        if self.dhcp_active:
-            kill_proc(self.dhcp_pid)
-        elif self.dhcp_pid:
-            LOG.debug(_('dhcrelay for %(net_id)s, dhcp_pid %(dhcp_pid)d, '
-                        'is stale, ignoring command'),
-                      {'net_id': self.network.id,
-                       'dhcp_pid': self.dhcp_pid}
-                      )
+        if self.is_dhcp_active():
+            kill_proc(self.get_dhcp_pid(DhcpDnsProxy.DHCPv4))
+            kill_proc(self.get_dhcp_pid(DhcpDnsProxy.DHCPv6))
+        elif self.get_dhcp_pid(DhcpDnsProxy.DHCPv4) and\
+             self.get_dhcp_pid(DhcpDnsProxy.DHCPv6):
+            LOG.debug(
+                _('dhcrelay for %(net_id)s, dhcp_pid %(dhcp_pid)d, '
+                  'dhcp6_pid %(dhcp6_pid)d, is stale, ignoring command'),
+                {
+                    'net_id': self.network.id,
+                    'dhcp_pid': self.self.get_dhcp_pid(DhcpDnsProxy.DHCPv4),
+                    'dhcp6_pid': self.self.get_dhcp_pid(DhcpDnsProxy.DHCPv6)
+                })
         else:
             LOG.debug(_('No dhcrelay started for %s'), self.network.id)
 
@@ -212,14 +228,12 @@ class DhcpDnsProxy(dhcp.DhcpLocalProcess):
         self._spawn_dhcp_proxy()
         self._spawn_dns_proxy()
 
-    @property
-    def dhcp_pid(self):
+    def get_dhcp_pid(self, version):
         """Last known pid for the dhcrelay process spawned for this network."""
-        return self._get_value_from_conf_file('dhcp_pid', int)
+        return self._get_value_from_conf_file('dhcp%s_pid' % version, int)
 
-    @dhcp_pid.setter
-    def dhcp_pid(self, value):
-        dhcp_pid_file_path = self.get_conf_file_name('dhcp_pid',
+    def set_dhcp_pid(self, value, version):
+        dhcp_pid_file_path = self.get_conf_file_name('dhcp%s_pid' % version,
                                                      ensure_conf_dir=True)
         utils.replace_file(dhcp_pid_file_path, value)
 
@@ -228,36 +242,58 @@ class DhcpDnsProxy(dhcp.DhcpLocalProcess):
         """Last known pid for the dnsmasq process spawned for this network."""
         return self._get_value_from_conf_file('dns_pid', int)
 
+    def _construct_dhcrelay_commands(self, relay_ips, relay_ipv6s):
+        dhcrelay_v4_command = [
+            self.conf.dhcrelay_path, '-4', '-a', '-i', self.interface_name]
+
+        dhcrelay_v6_command = [
+            self.conf.dhcrelay_path, '-6', '-I', '-l', self.interface_name]
+
+        if self.conf.use_link_selection_option:
+            dhcrelay_v4_command.append('-o')
+            dhcrelay_v4_command.append(self._get_relay_device_name())
+
+            for ipv6_addr in relay_ipv6s:
+                dhcrelay_v6_command.append('-u')
+
+                if self.conf.use_ipv6_unicast_requests:
+                    dhcrelay_v6_command.append("%".join((
+                        ipv6_addr, self._get_relay_device_name())))
+                else:
+                    dhcrelay_v6_command.append(self._get_relay_device_name())
+
+        dhcrelay_v4_command.append(" ".join(relay_ips))
+
+        return [
+            dhcrelay_v4_command,
+            dhcrelay_v6_command
+        ]
+
     def _spawn_dhcp_proxy(self):
         """Spawns a dhcrelay process for the network."""
         relay_ips = self._get_relay_ips('external_dhcp_servers')
+        relay_ipv6s = self._get_relay_ips('external_dhcp_ipv6_servers')
 
         if not relay_ips:
             LOG.error(_('DHCP relay server isn\'t defined for network %s'),
                       self.network.id)
             return
 
-        cmd = [
-            self.conf.dhcrelay_path,
-            '-a',
-            '-i',
-            self.interface_name,
-        ]
+        commands = self._construct_dhcrelay_commands(relay_ips, relay_ipv6s)
 
-        if self.conf.use_link_selection_option:
-            cmd.append('-l')
-            cmd.append(self._get_relay_device_name())
+        for cmd in commands:
+            if self.network.namespace:
+                ip_wrapper = ip_lib.IPWrapper(self.root_helper,
+                                              self.network.namespace)
+                try:
+                    ip_wrapper.netns.execute(cmd)
+                except RuntimeError:
+                    LOG.info(_("Can't start dhcrelay for %(command)s"),
+                             {'command': cmd})
+            else:
+                utils.execute(cmd, self.root_helper)
 
-        cmd.append(" ".join(relay_ips))
-
-        if self.network.namespace:
-            ip_wrapper = ip_lib.IPWrapper(self.root_helper,
-                                          self.network.namespace)
-            ip_wrapper.netns.execute(cmd)
-        else:
-            utils.execute(cmd, self.root_helper)
-
-        self._save_process_pid()
+        self._save_process_pids()
 
     def _spawn_dns_proxy(self):
         """Spawns a Dnsmasq process in DNS relay only mode for the network."""
@@ -292,17 +328,24 @@ class DhcpDnsProxy(dhcp.DhcpLocalProcess):
         else:
             utils.execute(cmd, self.root_helper)
 
-    def _save_process_pid(self):
+    def _save_process_pids(self):
         pids = [pid for pid in os.listdir('/proc') if pid.isdigit()]
 
         for pid in pids:
             try:
                 cmdline = open(os.path.join('/proc', pid, 'cmdline'),
                                'rb').read()
+                # Hack "'-6' not in cmdline" was made because of
+                # current dhcprelay path /usr/local/dhcp-4.3.0/sbin/dhcrelay
+                # where -4 always exists.
                 if ((self.interface_name in cmdline) and
-                        ('dhcrelay' in cmdline)):
-                    self.dhcp_pid = pid
-                    break
+                        ('dhcrelay' in cmdline) and
+                        ('-6' not in cmdline)):
+                    self.set_dhcp_pid(pid, version=4)
+                if ((self.interface_name in cmdline) and
+                        ('dhcrelay' in cmdline) and
+                        ('-6' in cmdline)):
+                    self.set_dhcp_pid(pid, version=6)
             except IOError:
                 continue
 
@@ -322,8 +365,8 @@ class DhcpDnsProxy(dhcp.DhcpLocalProcess):
 
         try:
             for relay_ip in relay_ips:
-                socket.inet_aton(relay_ip)
-        except socket.error:
+                netaddr.IPAddress(relay_ip)
+        except netaddr.core.AddrFormatError:
             LOG.error(_('An invalid option value has been provided:'
                         ' %(opt_name)s=%(opt_value)s') %
                       dict(opt_name=ip_opt_name, opt_value=relay_ip))
@@ -366,7 +409,7 @@ class DnsDhcpProxyDeviceManager(dhcp.DeviceManager):
         relay_iface = ip_lib.IPDevice(iface_name, self.root_helper)
 
         LOG.info(_('Allocating static IP %(relay_ip)s for %(iface_name)s'),
-                 relay_ip=relay_ip, iface_name=iface_name)
+                 {'relay_ip': relay_ip, 'iface_name': iface_name})
 
         if network.namespace:
             relay_iface.namespace = network.namespace

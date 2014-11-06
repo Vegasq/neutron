@@ -16,6 +16,7 @@
 from oslo.config import cfg as neutron_conf
 from taskflow.patterns import linear_flow
 
+from neutron.api.v2 import attributes
 from neutron.db.infoblox import infoblox_db
 from neutron.db.infoblox import models
 from neutron.extensions import external_net
@@ -104,12 +105,24 @@ class InfobloxIPAMController(neutron_ipam.NeutronIPAMController):
                             'gateway_ip': subnet['gateway_ip'],
                             'disable': True,
                             'nameservers': nameservers,
-                            'network_extattrs': network_extattrs}
+                            'network_extattrs': network_extattrs,
+                            'ip_version': subnet['ip_version'],
+                            # Members to be restarted
+                            'related_members': set([cfg.dhcp_member,
+                                                   cfg.dns_member])}
+
+        if subnet['ip_version'] == 6 and subnet['enable_dhcp']:
+            if attributes.is_attr_set(subnet['ipv6_ra_mode']):
+                method_arguments['ipv6_ra_mode'] = subnet['ipv6_ra_mode']
+            if attributes.is_attr_set(subnet['ipv6_address_mode']):
+                method_arguments[
+                    'ipv6_address_mode'] = subnet['ipv6_address_mode']
 
         if not cfg.is_external and cfg.require_dhcp_relay:
             for member in dhcp_members:
                 dhcp_member = models.InfobloxDHCPMember(
                     server_ip=member.ip,
+                    server_ipv6=member.ipv6,
                     network_id=network.id
                 )
                 context.session.add(dhcp_member)
@@ -117,6 +130,7 @@ class InfobloxIPAMController(neutron_ipam.NeutronIPAMController):
             for member in dns_members:
                 dns_member = models.InfobloxDNSMember(
                     server_ip=member.ip,
+                    server_ipv6=member.ipv6,
                     network_id=network.id
                 )
                 context.session.add(dns_member)
@@ -224,10 +238,15 @@ class InfobloxIPAMController(neutron_ipam.NeutronIPAMController):
         zone_auth = self.pattern_builder(cfg.domain_suffix_pattern).build(
             context, subnets)
 
-        if ip:
+        if ip and ip.get('ip_address', None):
+            subnet_id = ip.get('subnet_id', None)
+            ip_to_be_allocated = ip.get('ip_address', None)
             allocated_ip = self.ip_allocator.allocate_given_ip(
-                networkview_name, dnsview_name, zone_auth, hostname, mac, ip,
-                extattrs)
+                networkview_name, dnsview_name, zone_auth, hostname, mac,
+                ip_to_be_allocated, extattrs)
+            allocated_ip = {'subnet_id': subnet_id,
+                            'ip_address': allocated_ip}
+
         else:
             # Allocate next available considering IP ranges.
             ip_ranges = subnets['allocation_pools']
@@ -240,6 +259,9 @@ class InfobloxIPAMController(neutron_ipam.NeutronIPAMController):
                     allocated_ip = self.ip_allocator.allocate_ip_from_range(
                         dnsview_name, networkview_name, zone_auth, hostname,
                         mac, first_ip, last_ip, extattrs)
+                    allocated_ip = {'subnet_id': subnets.id,
+                                    'ip_address': allocated_ip}
+
                     break
                 except exceptions.InfobloxCannotAllocateIp:
                     LOG.debug("No more free IP's in slice %s-%s." % (first_ip,
@@ -252,7 +274,7 @@ class InfobloxIPAMController(neutron_ipam.NeutronIPAMController):
                     netview=networkview_name, cidr=subnets['cidr'])
 
         LOG.debug('IP address allocated on Infoblox NIOS: %s', allocated_ip)
-        return {'ip_address': allocated_ip, 'subnet_id': subnets['id']}
+        return allocated_ip
 
     def deallocate_ip(self, context, subnet, port, ip):
         cfg = self.config_finder.find_config_for_subnet(context, subnet)

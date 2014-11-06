@@ -580,8 +580,7 @@ class NeutronCorePluginV2(neutron_plugin_base_v2.NeutronPluginBaseV2,
             for subnets in version_subnets:
                 if subnets:
                     result = NeutronCorePluginV2._generate_ip(context, subnets)
-                    ips.append({'ip_address': result['ip_address'],
-                                'subnet_id': result['subnet_id']})
+                    ips.append(result)
         return ips
 
     def _validate_subnet_cidr(self, context, network, new_subnet_cidr):
@@ -1561,8 +1560,14 @@ class NeutronIPAMPlugin(NeutronCorePluginV2):
                         raise n_exc.IpAddressInUse(
                             net_id=p['network_id'],
                             ip_address=ip_address.format())
-                    ips.append({'ip_address': ip_address.format(),
-                                'subnet_id': subnet['id']})
+
+                    ip_data = {'ip_address': ip_address.format(),
+                               'subnet_id': subnet['id']}
+                    result = self.get_ipam_driver.allocate_ip(
+                        context, p, ip=ip_data)
+                    if result:
+                        ips.append(result)
+
                     v6.remove(subnet)
             version_subnets = v4 + v6
 
@@ -1570,9 +1575,11 @@ class NeutronIPAMPlugin(NeutronCorePluginV2):
                 if s:
                     result = self.get_ipam_driver.allocate_ip(
                         context, p, ip={'subnet_id': s['id']})
-                    if result:
-                        ips.append({'ip_address': result['ip_address'],
-                                    'subnet_id': result['subnet_id']})
+                    if type(result) is dict:
+                        ips.append(result)
+                    elif result:
+                        ips.append({'ip_address': result,
+                                    'subnet_id': s['id']})
         return ips
 
     def _update_subnet_dns_nameservers(self, context, id, s):
@@ -1632,7 +1639,7 @@ class NeutronIPAMPlugin(NeutronCorePluginV2):
             context, filters, fields, sorts, limit, marker, page_reverse)
 
         for net in nets:
-            if hasattr(net, 'id'):
+            if 'id' in net:
                 ipam_drv = self.get_ipam_driver
                 net.update(ipam_drv.get_additional_network_dict_params(
                     context, net['id']))

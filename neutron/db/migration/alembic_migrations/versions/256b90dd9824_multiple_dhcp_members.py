@@ -41,6 +41,7 @@ def upgrade(active_plugins=None, options=None):
         sa.Column('id', sa.String(length=36), nullable=False),
         sa.Column('network_id', sa.String(length=36), nullable=False),
         sa.Column('server_ip', sa.String(length=40), nullable=False),
+        sa.Column('server_ipv6', sa.String(length=40), nullable=False),
         sa.ForeignKeyConstraint(['network_id'], ['networks.id'],
                                 ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id'))
@@ -50,6 +51,7 @@ def upgrade(active_plugins=None, options=None):
         sa.Column('id', sa.String(length=36), nullable=False),
         sa.Column('network_id', sa.String(length=36), nullable=False),
         sa.Column('server_ip', sa.String(length=40), nullable=False),
+        sa.Column('server_ipv6', sa.String(length=40), nullable=False),
         sa.ForeignKeyConstraint(['network_id'], ['networks.id'],
                                 ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id'))

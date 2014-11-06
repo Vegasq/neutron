@@ -304,7 +304,7 @@ class ObjectManipulatorTestCase(base.BaseTestCase):
         connector.get_object.return_value = None
 
         ibom = om.InfobloxObjectManipulator(connector)
-        ibom.create_ip_range(net_view, start_ip, end_ip, disable)
+        ibom.create_ip_range(net_view, start_ip, end_ip, None, disable)
 
         assert not connector.get_object.called
         matcher = PayloadMatcher({'start_addr': start_ip,

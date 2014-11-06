@@ -27,9 +27,12 @@ class CreateNetViewTask(task.Task):
 
 class CreateNetworkTask(task.Task):
     def execute(self, obj_manip, net_view_name, cidr, nameservers, dhcp_member,
-                gateway_ip, network_extattrs):
+                gateway_ip, network_extattrs, related_members,
+                ip_version, ipv6_ra_mode=None, ipv6_address_mode=None):
         obj_manip.create_network(net_view_name, cidr, nameservers, dhcp_member,
                                  gateway_ip, network_extattrs)
+        for member in related_members:
+            obj_manip.restart_all_services(member)
 
     def revert(self, obj_manip, net_view_name, cidr, **kwargs):
         obj_manip.delete_network(net_view_name, cidr)
@@ -46,10 +49,13 @@ class CreateNetworkFromTemplateTask(task.Task):
 
 
 class CreateIPRange(task.Task):
-    def execute(self, obj_manip, net_view_name, start_ip, end_ip, disable):
-        obj_manip.create_ip_range(net_view_name, start_ip, end_ip, disable)
+    def execute(self, obj_manip, net_view_name, start_ip, end_ip, disable,
+                cidr, ip_version, ipv6_ra_mode=None, ipv6_address_mode=None):
+        obj_manip.create_ip_range(net_view_name, start_ip, end_ip,
+                                  cidr, disable)
 
-    def revert(self, obj_manip, net_view_name, start_ip, end_ip, **kwargs):
+    def revert(self, obj_manip, net_view_name, start_ip, end_ip,
+               ip_version, ipv6_ra_mode=None, ipv6_address_mode=None, **kwargs):
         obj_manip.delete_ip_range(net_view_name, start_ip, end_ip)
 
 
