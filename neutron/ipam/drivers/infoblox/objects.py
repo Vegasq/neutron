@@ -12,15 +12,19 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-import socket
+import logging
+import netaddr
 
 import neutron.ipam.drivers.infoblox.exceptions as ib_exc
 
 
+LOG = logging.getLogger(__name__)
+
+
 def is_valid_ip(ip):
     try:
-        socket.inet_aton(ip)
-    except socket.error:
+        netaddr.IPAddress(ip)
+    except netaddr.core.AddrFormatError:
         return False
 
     return True
@@ -187,39 +191,68 @@ class HostRecordIPv4(IPAllocationObject):
         self.ip = None
         self.dns_view = None
         self.ref = None
+        self._ip_version = None
 
     def __repr__(self):
         return "{}".format(self.to_dict())
 
     def to_dict(self):
-        return {
+        result = {
             'view': self.dns_view,
             'name': '.'.join([self.hostname, self.zone_auth]),
-            'ipv4addrs': [{
+        }
+        if self.ip_version == 4:
+            result['ipv4addrs'] = [{
                     'mac': self.mac,
                     'configure_for_dhcp': True,
                     'ipv4addr': self.ip}
             ]
-        }
+        elif self.ip_version == 6:
+            result['ipv6addrs'] = [{
+                    'configure_for_dhcp': True,
+                    'ipv6addr': self.ip,
+                    'duid': self.mac}
+            ]
 
-    return_fields = [
-        'ipv4addrs',
-    ]
+        return result
+
+    @property
+    def ip_version(self):
+        return self._ip_version
+
+    @ip_version.setter
+    def ip_version(self, value):
+        self._ip_version = value
+        if self._ip_version == 4:
+            self.return_fields = ['ipv4addrs']
+        else:
+            self.return_fields = ['ipv6addrs']
 
     @staticmethod
     def from_dict(hr_dict):
-        ipv4addrs = hr_dict.get('ipv4addrs')
-        if not ipv4addrs:
+        ipv4addrs = hr_dict.get('ipv4addrs', None)
+        ipv6addrs = hr_dict.get('ipv6addrs', None)
+        if not ipv4addrs and not ipv6addrs:
+            # import pdb; pdb.set_trace()
+            LOG.error(hr_dict)
             raise ib_exc.HostRecordNoIPv4Addrs()
 
-        ipv4addr = ipv4addrs[0]
-        ip = ipv4addr['ipv4addr']
-        if not is_valid_ip(ip):
-            raise ib_exc.InfobloxInvalidIp(ip=ip)
+        if ipv4addrs:
+            ipv4addr = ipv4addrs[0]
+            ip = ipv4addr['ipv4addr']
+            if not is_valid_ip(ip):
+                raise ib_exc.InfobloxInvalidIp(ip=ip)
+            host = ipv4addr.get('host', 'unknown.unknown')
+            mac = ipv4addr.get('mac')
+        elif ipv6addrs:
+            ipv6addr = ipv6addrs[0]
+            ip = ipv6addr['ipv6addr']
+            if not is_valid_ip(ip):
+                raise ib_exc.InfobloxInvalidIp(ip=ip)
+            host = ipv6addr.get('host', 'unknown.unknown')
+            mac = ipv6addr.get('mac')
 
-        host = ipv4addr.get('host', 'unknown.unknown')
         hostname, _, dns_zone = host.partition('.')
-        mac = ipv4addr.get('mac')
 
         host_record = HostRecordIPv4()
         host_record.hostname = hostname

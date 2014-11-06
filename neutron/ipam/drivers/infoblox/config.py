@@ -141,6 +141,8 @@ class PatternBuilder(object):
         if ip_addr:
             octets = ip_addr.split('.')
             pattern_dict['ip_address'] = ip_addr.replace('.', '-')
+            pattern_dict['ip_address'] = pattern_dict['ip_address'].replace(
+                ':', '_')
             for i in xrange(len(octets)):
                 octet_key = 'ip_address_octet{i}'.format(i=(i + 1))
                 pattern_dict[octet_key] = octets[i]

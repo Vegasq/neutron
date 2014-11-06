@@ -164,8 +164,7 @@ class DhcpDnsProxy(dhcp.DhcpLocalProcess):
             relay_iface_mac_address,
             self.conf.dhcp_relay_bridge)
 
-        interface_name = self.device_manager.setup(self.network,
-                                                   reuse_existing=True)
+        interface_name = self.device_manager.setup(self.network)
         if self.dhcp_active or self.dns_active:
             self.restart()
         elif self._enable_dns_dhcp():
@@ -366,7 +365,7 @@ class DnsDhcpProxyDeviceManager(dhcp.DeviceManager):
         relay_iface = ip_lib.IPDevice(iface_name, self.root_helper)
 
         LOG.info(_('Allocating static IP %(relay_ip)s for %(iface_name)s'),
-                 relay_ip=relay_ip, iface_name=iface_name)
+                 {'relay_ip': relay_ip, 'iface_name': iface_name})
 
         if network.namespace:
             relay_iface.namespace = network.namespace

@@ -116,7 +116,15 @@ class InfobloxIPAMController(neutron_ipam.NeutronIPAMController):
                                                    cfg.dns_members),
                             'dhcp_trel_ip': infoblox_db.get_management_net_ip(
                                 context,
-                                subnet['network_id'])}
+                                subnet['network_id']),
+                            'ip_version': subnet['ip_version'],
+                            'ipv6_ra_mode': getattr(subnet,
+                                                    'ipv6_ra_mode',
+                                                    None),
+                            'ipv6_address_mode': getattr(subnet,
+                                                         'ipv6_address_mode',
+                                                         None),
+        }
 
         if not cfg.is_external and cfg.require_dhcp_relay:
             for member in dhcp_members:
@@ -241,9 +249,13 @@ class InfobloxIPAMController(neutron_ipam.NeutronIPAMController):
             context, subnets)
 
         if ip:
+            subnet_id = ip.get('subnet_id', None)
             allocated_ip = self.ip_allocator.allocate_given_ip(
                 networkview_name, dnsview_name, zone_auth, hostname, mac, ip,
                 extattrs)
+            allocated_ip = {'subnet_id': subnet_id,
+                            'ip_address': allocated_ip}
+
         else:
             # Allocate next available considering IP ranges.
             ip_ranges = subnets['allocation_pools']
@@ -256,6 +268,9 @@ class InfobloxIPAMController(neutron_ipam.NeutronIPAMController):
                     allocated_ip = self.ip_allocator.allocate_ip_from_range(
                         dnsview_name, networkview_name, zone_auth, hostname,
                         mac, first_ip, last_ip, extattrs)
+                    allocated_ip = {'subnet_id': subnets.id,
+                                    'ip_address': allocated_ip}
+
                     break
                 except exceptions.InfobloxCannotAllocateIp:
                     LOG.debug("No more free IP's in slice %s-%s." % (first_ip,

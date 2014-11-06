@@ -13,11 +13,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 import operator
+import logging
 
 from taskflow import task
 
 from neutron.ipam.drivers.infoblox import exceptions
 
+
+LOG = logging.getLogger(__name__)
 
 class CreateNetViewTask(task.Task):
     def execute(self, obj_manip, net_view_name):
@@ -30,9 +33,11 @@ class CreateNetViewTask(task.Task):
 
 class CreateNetworkTask(task.Task):
     def execute(self, obj_manip, net_view_name, cidr, nameservers, dhcp_member,
-                gateway_ip, network_extattrs, related_members, dhcp_trel_ip):
-        obj_manip.create_network(net_view_name, cidr, nameservers, dhcp_member,
-                                 gateway_ip, dhcp_trel_ip, network_extattrs)
+                gateway_ip, network_extattrs, related_members, dhcp_trel_ip,
+                ip_version, ipv6_ra_mode, ipv6_address_mode):
+        obj_manip.create_network(net_view_name, cidr, nameservers,
+                                 dhcp_member, gateway_ip, dhcp_trel_ip,
+                                 network_extattrs)
         for member in related_members:
             obj_manip.restart_all_services(member)
 
@@ -73,10 +78,13 @@ class CreateNetworkFromTemplateTask(task.Task):
 
 
 class CreateIPRange(task.Task):
-    def execute(self, obj_manip, net_view_name, start_ip, end_ip, disable):
-        obj_manip.create_ip_range(net_view_name, start_ip, end_ip, disable)
+    def execute(self, obj_manip, net_view_name, start_ip, end_ip, disable,
+                cidr, ip_version, ipv6_ra_mode, ipv6_address_mode):
+        obj_manip.create_ip_range(net_view_name, start_ip, end_ip,
+                                  cidr, disable)
 
-    def revert(self, obj_manip, net_view_name, start_ip, end_ip, **kwargs):
+    def revert(self, obj_manip, net_view_name, start_ip, end_ip,
+                ip_version, ipv6_ra_mode, ipv6_address_mode, **kwargs):
         obj_manip.delete_ip_range(net_view_name, start_ip, end_ip)
 
 
