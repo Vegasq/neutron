@@ -541,7 +541,8 @@ class MemberManagerTestCase(base.BaseTestCase):
     def test_returns_next_unused_member(self):
         context = mock.MagicMock()
         member_config = [{"name": "member%d" % i,
-                          "ipv4addr": "192.168.1.%d" % i}
+                          "ipv4addr": "192.168.1.%d" % i,
+                          "ipv6addr": "2001:DB8::%s" % i}
                          for i in xrange(1, 5)]
 
         used_members = [member_config[i]['name'] for i in xrange(3)]
@@ -562,7 +563,8 @@ class MemberManagerTestCase(base.BaseTestCase):
     def test_raises_no_member_available_if_all_members_used(self):
         context = mock.MagicMock()
         member_config = [{"name": "member%d" % i,
-                          "ipv4addr": "192.168.1.%d" % i}
+                          "ipv4addr": "192.168.1.%d" % i,
+                          "ipv6addr": "2001:DB8::%s" % i}
                          for i in xrange(1, 5)]
 
         used_members = [member_config[i]['name']
@@ -594,10 +596,12 @@ class MemberManagerTestCase(base.BaseTestCase):
         mapping = 'some-mapping-value'
         expected_member = ['member1']
         expected_ip = '10.0.0.1'
+        expected_ipv6 = '2001:DB8::3'
 
         mm = config.MemberManager(
             io.BytesIO(jsonutils.dumps([{'name': expected_member[0],
-                                    'ipv4addr': expected_ip}])))
+                                    'ipv4addr': expected_ip,
+                                    'ipv6addr': expected_ipv6}])))
 
         with mock.patch.object(infoblox_db, 'get_members') as get_mock:
             get_mock.return_value = expected_member
@@ -613,7 +617,8 @@ class MemberManagerTestCase(base.BaseTestCase):
 
         mm = config.MemberManager(
             io.BytesIO(jsonutils.dumps([{'name': name,
-                                    'ipv4addr': ip}])))
+                                    'ipv4addr': ip,
+                                    'ipv6addr': ip}])))
 
         m = mm.get_member(name)
 
@@ -627,18 +632,22 @@ class MemberManagerTestCase(base.BaseTestCase):
 
         mm = config.MemberManager(
             io.BytesIO(jsonutils.dumps([{'name': actual_name,
-                                    'ipv4addr': ip}])))
+                                    'ipv4addr': ip,
+                                    'ipv6addr': ip}])))
 
         self.assertRaises(exceptions.InfobloxConfigException, mm.get_member,
                           search_for_name)
 
     def test_member_marked_as_unavailable(self):
         expected_ip = "192.168.1.2"
+        expected_ipv6 = "2001:DB8::3"
         expected_name = "available_member"
         member_config = [{"name": expected_name,
-                          "ipv4addr": expected_ip},
+                          "ipv4addr": expected_ip,
+                          "ipv6addr": expected_ipv6},
                          {"name": "unavailable_member",
                           "ipv4addr": "192.168.1.3",
+                          "ipv6addr": "2001:DB8::3",
                           "is_available": False}]
 
         expected_member = objects.Member(ip=expected_ip, name=expected_name)

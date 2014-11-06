@@ -186,9 +186,9 @@ class AllocateIPTestCase(base.BaseTestCase):
         mac = 'aa:bb:cc:dd:ee:ff'
         port = {'id': hostname,
                 'mac_address': mac}
-        ip = '192.168.1.1'
         ip_dict = {'ip_address': '192.168.1.1',
                    'subnet_id': 'fake-id'}
+        ip = {'ip_address': '192.168.1.1'}
 
         b = ipam_controller.InfobloxIPAMController(infoblox,
                                                    member_config,
@@ -199,7 +199,8 @@ class AllocateIPTestCase(base.BaseTestCase):
         b.allocate_ip(context, subnet, port, ip_dict)
 
         ip_allocator.allocate_given_ip.assert_called_once_with(
-            mock.ANY, mock.ANY, mock.ANY, hostname, mac, ip, mock.ANY)
+            mock.ANY, mock.ANY, mock.ANY, hostname, mac, ip['ip_address'],
+            mock.ANY)
 
     def test_host_record_from_range_created_on_allocate_ip(self):
         infoblox = mock.Mock()
@@ -210,10 +211,12 @@ class AllocateIPTestCase(base.BaseTestCase):
         hostname = 'fake port id'
         first_ip = '192.168.1.1'
         last_ip = '192.168.1.132'
+
         subnet = {'allocation_pools': [{'first_ip': first_ip,
                                         'last_ip': last_ip}],
                   'tenant_id': 'some-id',
                   'id': 'some-id'}
+
         mac = 'aa:bb:cc:dd:ee:ff'
         port = {'id': hostname,
                 'mac_address': mac}
