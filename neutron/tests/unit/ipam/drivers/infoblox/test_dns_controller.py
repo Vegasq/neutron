@@ -141,7 +141,8 @@ class DomainZoneTestCase(base.BaseTestCase):
         manip = mock.Mock()
         context = infoblox_ipam.FlowContext(mock.Mock(), 'create-dns')
         subnet = {'network_id': 'some-id',
-                  'cidr': 'some-cidr'}
+                  'cidr': 'some-cidr',
+                  'ip_version': 4}
         expected_member = 'member-name'
 
         ip_allocator = mock.Mock()
@@ -176,7 +177,8 @@ class DomainZoneTestCase(base.BaseTestCase):
         manip = mock.Mock()
         context = infoblox_ipam.FlowContext(mock.Mock(), 'create-dns')
         subnet = {'network_id': 'some-id',
-                  'cidr': 'some-cidr'}
+                  'cidr': 'some-cidr',
+                  'ip_version': 4}
         primary_dns_member = 'member-primary'
         secondary_dns_members = ['member-secondary']
 
