@@ -509,46 +509,25 @@ class InfobloxObjectManipulator(object):
             return False
 
     def _create_infoblox_ip_address(self, ip_object):
-        LOG.error(ip_object.infoblox_type)
-        LOG.error(ip_object.infoblox_type)
-        LOG.error(ip_object.infoblox_type)
+        try:
+            created_ip_json = self._create_infoblox_object(
+                ip_object.infoblox_type,
+                ip_object.to_dict(),
+                check_if_exists=False,
+                return_fields=ip_object.return_fields)
 
-        LOG.error(ip_object)
-        LOG.error(ip_object)
-        LOG.error(ip_object)
+            return ip_object.from_dict(created_ip_json)
 
-        created_ip_json = self._create_infoblox_object(
-            ip_object.infoblox_type,
-            ip_object.to_dict(),
-            check_if_exists=False,
-            return_fields=ip_object.return_fields)
-
-        LOG.error(created_ip_json)
-        LOG.error(created_ip_json)
-        LOG.error(created_ip_json)
-        LOG.error(created_ip_json)
-
-        return ip_object.from_dict(created_ip_json)
-
-        # try:
-        #     created_ip_json = self._create_infoblox_object(
-        #         ip_object.infoblox_type,
-        #         ip_object.to_dict(),
-        #         check_if_exists=False,
-        #         return_fields=ip_object.return_fields)
-
-        #     return ip_object.from_dict(created_ip_json)
-
-        # except exc.InfobloxCannotCreateObject as e:
-        #     if "Cannot find 1 available IP" in e.response['text']:
-        #         raise exc.InfobloxCannotAllocateIp(ip_data=ip_object.to_dict())
-        #     else:
-        #         raise
-        # except exc.HostRecordNoIPv4Addrs:
-        #     raise exc.InfobloxHostRecordIpAddrNotCreated(ip=ip_object.ip,
-        #                                                  mac=ip_object.mac)
-        # except exc.InfobloxInvalidIp:
-        #     raise exc.InfobloxDidNotReturnCreatedIPBack()
+        except exc.InfobloxCannotCreateObject as e:
+            if "Cannot find 1 available IP" in e.response['text']:
+                raise exc.InfobloxCannotAllocateIp(ip_data=ip_object.to_dict())
+            else:
+                raise
+        except exc.HostRecordNoIPv4Addrs:
+            raise exc.InfobloxHostRecordIpAddrNotCreated(ip=ip_object.ip,
+                                                         mac=ip_object.mac)
+        except exc.InfobloxInvalidIp:
+            raise exc.InfobloxDidNotReturnCreatedIPBack()
 
     def _create_infoblox_object(self, obj_type, payload,
                                 additional_create_kwargs=None,

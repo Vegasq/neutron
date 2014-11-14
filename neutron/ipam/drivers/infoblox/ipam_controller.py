@@ -226,6 +226,7 @@ class InfobloxIPAMController(neutron_ipam.NeutronIPAMController):
     def allocate_ip(self, context, subnets, port, ip=None):
         hostname = port.get('id') or uuidutils.generate_uuid()
         mac = port['mac_address']
+        LOG.error('ipmcontroller mac %s' % mac)
         extattrs = self.ea_manager.get_extattrs_for_ip(context, port)
 
         LOG.debug("Trying to allocate IP for %s on Infoblox NIOS" % hostname)
