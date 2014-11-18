@@ -123,6 +123,7 @@ class InfobloxIPAMController(neutron_ipam.NeutronIPAMController):
             for member in dhcp_members:
                 dhcp_member = models.InfobloxDHCPMember(
                     server_ip=member.ip,
+                    server_ipv6=member.ipv6,
                     network_id=network.id
                 )
                 context.session.add(dhcp_member)
@@ -130,6 +131,7 @@ class InfobloxIPAMController(neutron_ipam.NeutronIPAMController):
             for member in dns_members:
                 dns_member = models.InfobloxDNSMember(
                     server_ip=member.ip,
+                    server_ipv6=member.ipv6,
                     network_id=network.id
                 )
                 context.session.add(dns_member)
@@ -226,7 +228,6 @@ class InfobloxIPAMController(neutron_ipam.NeutronIPAMController):
     def allocate_ip(self, context, subnets, port, ip=None):
         hostname = port.get('id') or uuidutils.generate_uuid()
         mac = port['mac_address']
-        LOG.error('ipmcontroller mac %s' % mac)
         extattrs = self.ea_manager.get_extattrs_for_ip(context, port)
 
         LOG.debug("Trying to allocate IP for %s on Infoblox NIOS" % hostname)
@@ -249,7 +250,10 @@ class InfobloxIPAMController(neutron_ipam.NeutronIPAMController):
 
         else:
             # Allocate next available considering IP ranges.
-            ip_ranges = subnets['allocation_pools']
+            if type(subnets) is dict:
+                ip_ranges = subnets['allocation_pools']
+            else:
+                ip_ranges = subnets.allocation_pools
             # Let Infoblox try to allocate an IP from each ip_range
             # consistently, and break on the first successful allocation.
             for ip_range in ip_ranges:

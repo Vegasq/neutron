@@ -248,19 +248,22 @@ class DhcpDnsProxy(dhcp.DhcpLocalProcess):
         """Last known pid for the dnsmasq process spawned for this network."""
         return self._get_value_from_conf_file('dns_pid', int)
 
-    def _construct_dhcrelay_commands(self, relay_ips):
+    def _construct_dhcrelay_commands(self, relay_ips, relay_ipv6s):
         dhcrelay_v4_command = [
             self.conf.dhcrelay_path, '-4', '-a', '-i', self.interface_name]
 
         dhcrelay_v6_command = [
-            self.conf.dhcrelay_path, '-6', '-l', self.interface_name]
+            self.conf.dhcrelay_path, '-6', '-I', '-l', self.interface_name]
 
         if self.conf.use_link_selection_option:
             dhcrelay_v4_command.append('-o')
             dhcrelay_v4_command.append(self._get_relay_device_name())
 
-            dhcrelay_v6_command.append('-u')
-            dhcrelay_v6_command.append(self._get_relay_device_name())
+            for ipv6_addr in relay_ipv6s:
+                dhcrelay_v6_command.append('-u')
+                dhcrelay_v6_command.append("%".join((
+                    ipv6_addr,
+                    self._get_relay_device_name())))
 
         dhcrelay_v4_command.append(" ".join(relay_ips))
 
@@ -272,13 +275,14 @@ class DhcpDnsProxy(dhcp.DhcpLocalProcess):
     def _spawn_dhcp_proxy(self):
         """Spawns a dhcrelay process for the network."""
         relay_ips = self._get_relay_ips('external_dhcp_servers')
+        relay_ipv6s = self._get_relay_ips('external_dhcp_ipv6_servers')
 
         if not relay_ips:
             LOG.error(_('DHCP relay server isn\'t defined for network %s'),
                       self.network.id)
             return
 
-        commands = self._construct_dhcrelay_commands(relay_ips)
+        commands = self._construct_dhcrelay_commands(relay_ips, relay_ipv6s)
 
         for cmd in commands:
             if self.network.namespace:
@@ -361,8 +365,8 @@ class DhcpDnsProxy(dhcp.DhcpLocalProcess):
 
         try:
             for relay_ip in relay_ips:
-                socket.inet_aton(relay_ip)
-        except socket.error:
+                netaddr.IPAddress(relay_ip)
+        except netaddr.core.AddrFormatError:
             LOG.error(_('An invalid option value has been provided:'
                         ' %(opt_name)s=%(opt_value)s') %
                       dict(opt_name=ip_opt_name, opt_value=relay_ip))

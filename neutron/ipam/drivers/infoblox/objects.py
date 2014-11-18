@@ -217,7 +217,7 @@ class HostRecordIPv6(HostRecord):
         result['ipv6addrs'] = [{
             'configure_for_dhcp': True,
             'ipv6addr': self.ip,
-            'duid': '00:03:00:06:%s' % self.mac
+            'duid': '00:03:00:01:%s' % self.mac
         }]
 
         return result
@@ -366,7 +366,7 @@ class FixedAddressIPv6(FixedAddress):
 
     def to_dict(self):
         return {
-            'duid': '00:03:00:06:%s' % self.mac,
+            'duid': '00:03:00:01:%s' % self.mac,
             'network_view': self.net_view,
             'ipv6addr': self.ip,
             'extattrs': self.extattrs
@@ -389,13 +389,16 @@ class FixedAddressIPv6(FixedAddress):
 
 
 class Member(object):
-    def __init__(self, ip, name):
+    def __init__(self, ip, name, ipv6=None):
         self.ip = ip
+        self.ipv6 = ipv6
         self.name = name
 
     def __eq__(self, other):
         return self.ip == other.ip and self.name == other.name
 
     def __repr__(self):
-        return 'Member(IP={ip}, name={name})'.format(ip=self.ip,
-                                                     name=self.name)
+        return 'Member(IP={ip}, IPv6={ipv6}, name={name})'.format(
+            ip=self.ip,
+            ipv6=self.ipv6,
+            name=self.name)

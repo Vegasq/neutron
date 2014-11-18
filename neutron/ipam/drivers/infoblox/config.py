@@ -400,7 +400,8 @@ class MemberManager(object):
 
             try:
                 self.available_members = map(
-                    lambda m: objects.Member(name=m['name'], ip=m['ipv4addr']),
+                    lambda m: objects.Member(name=m['name'], ip=m['ipv4addr'],
+                                             ipv6=m['ipv6addr']),
                     filter(lambda m: m.get('is_available', True), all_members))
             except KeyError as key:
                 raise exceptions.InvalidMemberConfig(key=key)

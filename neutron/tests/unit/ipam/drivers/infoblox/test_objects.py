@@ -177,7 +177,7 @@ class InfobloxIPv4HostRecordObjectTestCase(base.BaseTestCase):
                              for expected in expected_attributes]))
 
 
-class FixedAddressTestCase(base.BaseTestCase):
+class FixedAddressIPv4TestCase(base.BaseTestCase):
     def test_builds_valid_fa_from_infoblox_returned_json(self):
         fixed_address_ref = ("fixedaddress/ZG5zLmZpeGVkX2FkZHJlc3MkMTAuMC4wLj"
                              "EwMC42ODAuLg:10.0.0.100/rv-test-netview")
@@ -187,7 +187,7 @@ class FixedAddressTestCase(base.BaseTestCase):
             "ipv4addr": "%s"
         }""" % (fixed_address_ref, ip))
 
-        fa = objects.FixedAddress.from_dict(fixed_address)
+        fa = objects.FixedAddressIPv4.from_dict(fixed_address)
         self.assertEqual(fa.ip, ip)
 
     def test_dict_contains_mac_ip_and_net_view(self):
@@ -203,7 +203,7 @@ class FixedAddressTestCase(base.BaseTestCase):
             'extattrs': expected_extattrs
         }
 
-        fa = objects.FixedAddress()
+        fa = objects.FixedAddressIPv4()
         fa.ip = expected_ip
         fa.net_view = expected_net_view
         fa.mac = expected_mac
