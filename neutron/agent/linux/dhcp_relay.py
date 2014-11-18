@@ -14,7 +14,6 @@
 #    under the License.
 import os
 import random
-import socket
 
 import netaddr
 from oslo.config import cfg

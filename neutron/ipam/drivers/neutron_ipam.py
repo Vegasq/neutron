@@ -125,7 +125,7 @@ class NeutronIPAMController(base.IPAMController):
             ip_address = {'subnet_id': subnet_id,
                           'ip_address': ip['ip_address']}
             neutron_db.allocate_specific_ip(
-                context, subnet_id,ip['ip_address'])
+                context, subnet_id, ip['ip_address'])
             return ip_address
         else:
             return neutron_db.generate_ip(context, subnet)

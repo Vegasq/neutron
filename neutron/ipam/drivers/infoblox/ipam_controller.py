@@ -116,8 +116,7 @@ class InfobloxIPAMController(neutron_ipam.NeutronIPAMController):
                                                     None),
                             'ipv6_address_mode': getattr(subnet,
                                                          'ipv6_address_mode',
-                                                         None),
-        }
+                                                         None)}
 
         if not cfg.is_external and cfg.require_dhcp_relay:
             for member in dhcp_members:

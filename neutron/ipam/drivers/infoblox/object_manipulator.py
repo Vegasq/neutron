@@ -111,7 +111,8 @@ class IPBackend():
         net_data = {'network_view': net_view_name, 'network': cidr}
         try:
             net = self.object_manipulator._get_infoblox_object_or_none(
-                self.ib_network_name, net_data, return_fields=['options', 'members'])
+                self.ib_network_name, net_data,
+                return_fields=['options', 'members'])
         except exc.InfobloxSearchError:
             net = None
 

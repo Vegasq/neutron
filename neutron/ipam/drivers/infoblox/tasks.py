@@ -12,13 +12,9 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-import operator
-import logging
 
 from taskflow import task
 
-
-LOG = logging.getLogger(__name__)
 
 class CreateNetViewTask(task.Task):
     def execute(self, obj_manip, net_view_name):
@@ -60,7 +56,7 @@ class CreateIPRange(task.Task):
                                   cidr, disable)
 
     def revert(self, obj_manip, net_view_name, start_ip, end_ip,
-                ip_version, ipv6_ra_mode, ipv6_address_mode, **kwargs):
+               ip_version, ipv6_ra_mode, ipv6_address_mode, **kwargs):
         obj_manip.delete_ip_range(net_view_name, start_ip, end_ip)
 
 
