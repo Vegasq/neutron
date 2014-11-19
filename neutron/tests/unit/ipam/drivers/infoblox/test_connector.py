@@ -29,6 +29,7 @@ valid_config.infoblox_wapi = 'http://localhost'
 valid_config.infoblox_username = 'user'
 valid_config.infoblox_password = 'pass'
 valid_config.infoblox_sslverify = False
+valid_config.infoblox_http_max_retries = 3
 
 
 class UrlMatcher(object):

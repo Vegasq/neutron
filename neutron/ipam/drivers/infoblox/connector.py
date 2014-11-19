@@ -16,6 +16,7 @@
 #    under the License.
 
 import functools
+import time
 
 from oslo.config import cfg
 import requests
@@ -34,7 +35,14 @@ OPTS = [
     cfg.StrOpt('infoblox_password', help=_("User password")),
     cfg.BoolOpt('infoblox_sslverify', default=False),
     cfg.IntOpt('infoblox_http_pool_connections', default=100),
-    cfg.IntOpt('infoblox_http_pool_maxsize', default=100)
+    cfg.IntOpt('infoblox_http_pool_maxsize', default=100),
+    cfg.IntOpt('infoblox_max_retry_interval', default=10000,
+               help=_("Maximum time between request resend.")),
+    cfg.IntOpt('infoblox_min_retry_interval', default=100,
+               help=_("Minimal time between request resend.")),
+    cfg.IntOpt('infoblox_http_max_retries', default=3,
+               help=_("How many times should we retry request in "
+                      "400 or 408 cases."))
 ]
 
 cfg.CONF.register_opts(OPTS)
@@ -80,7 +88,8 @@ class Infoblox(object):
         self.session = requests.Session()
         adapter = requests.adapters.HTTPAdapter(
             pool_connections=cfg.CONF.infoblox_http_pool_connections,
-            pool_maxsize=cfg.CONF.infoblox_http_pool_maxsize)
+            pool_maxsize=cfg.CONF.infoblox_http_pool_maxsize,
+            max_retries=cfg.CONF.infoblox_http_max_retries)
         self.session.mount('http://', adapter)
         self.session.mount('https://', adapter)
         self.session.auth = (self.username, self.password)
@@ -185,10 +194,31 @@ class Infoblox(object):
         url = self._construct_url(objtype, query_params)
 
         headers = {'Content-type': 'application/json'}
-        r = self.session.post(url,
-                              data=jsonutils.dumps(payload),
-                              verify=self.sslverify,
-                              headers=headers)
+
+        # Retry few times to resolve problem with
+        # sync up time between the master and members.
+        # This proccess could take several seconds.
+        time_start = time.time()
+        for i in xrange(cfg.CONF.infoblox_http_max_retries):
+            time_retry_start = time.time()
+            r = self.session.post(
+                url,
+                data=jsonutils.dumps(payload),
+                verify=self.sslverify,
+                headers=headers)
+
+            # For non 400 and 408 responces - exit from loop
+            # and pass result below.
+            if (r.status_code != requests.codes.TIMEOUT and
+                r.status_code != requests.codes.BAD):
+                break
+
+            now = time.time()
+            if (now - time_start > cfg.CONF.infoblox_max_retry_interval):
+                break
+            if (now - time_retry_start < cfg.CONF.infoblox_min_retry_interval):
+                 time.sleep(cfg.CONF.infoblox_min_retry_interval - (
+                    now - time_retry_start))
 
         if r.status_code != requests.codes.CREATED:
             raise exc.InfobloxCannotCreateObject(
