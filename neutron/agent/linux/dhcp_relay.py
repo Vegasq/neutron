@@ -47,7 +47,10 @@ OPTS = [
                help=_('Path to dhcrelay executable.')),
     cfg.BoolOpt('use_link_selection_option',
                 default=True,
-                help=_('Run dhcrelay with -l flag.')),
+                help=_('Run dhcrelay with -o flag.')),
+    cfg.BoolOpt('use_ipv6_unicast_requests',
+                default=True,
+                help=_('Run dhcrelay with -o flag.')),
     cfg.StrOpt('dhcp_relay_management_network',
                default=None,
                help=_("CIDR for the management network served by "
@@ -260,9 +263,12 @@ class DhcpDnsProxy(dhcp.DhcpLocalProcess):
 
             for ipv6_addr in relay_ipv6s:
                 dhcrelay_v6_command.append('-u')
-                dhcrelay_v6_command.append("%".join((
-                    ipv6_addr,
-                    self._get_relay_device_name())))
+
+                if self.conf.use_ipv6_unicast_requests:
+                    dhcrelay_v6_command.append("%".join((
+                        ipv6_addr, self._get_relay_device_name())))
+                else:
+                    dhcrelay_v6_command.append(self._get_relay_device_name())
 
         dhcrelay_v4_command.append(" ".join(relay_ips))
 
@@ -337,9 +343,12 @@ class DhcpDnsProxy(dhcp.DhcpLocalProcess):
             try:
                 cmdline = open(os.path.join('/proc', pid, 'cmdline'),
                                'rb').read()
+                # Hack "'-6' not in cmdline" was made because of
+                # current dhcprelay path /usr/local/dhcp-4.3.0/sbin/dhcrelay
+                # where -4 always exists.
                 if ((self.interface_name in cmdline) and
                         ('dhcrelay' in cmdline) and
-                        ('-4' in cmdline)):
+                        ('-6' not in cmdline)):
                     self.dhcp_pid = pid
                 if ((self.interface_name in cmdline) and
                         ('dhcrelay' in cmdline) and
