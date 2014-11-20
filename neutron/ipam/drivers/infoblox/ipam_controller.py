@@ -249,10 +249,7 @@ class InfobloxIPAMController(neutron_ipam.NeutronIPAMController):
 
         else:
             # Allocate next available considering IP ranges.
-            if type(subnets) is dict:
-                ip_ranges = subnets['allocation_pools']
-            else:
-                ip_ranges = subnets.allocation_pools
+            ip_ranges = subnets['allocation_pools']
             # Let Infoblox try to allocate an IP from each ip_range
             # consistently, and break on the first successful allocation.
             for ip_range in ip_ranges:

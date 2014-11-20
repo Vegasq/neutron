@@ -239,7 +239,7 @@ class DhcpDnsProxy(dhcp.DhcpLocalProcess):
     @dhcp6_pid.setter
     def dhcp6_pid(self, value):
         dhcp6_pid_file_path = self.get_conf_file_name('dhcp6_pid',
-                                                     ensure_conf_dir=True)
+                                                      ensure_conf_dir=True)
         utils.replace_file(dhcp6_pid_file_path, value)
 
     @property
@@ -290,7 +290,7 @@ class DhcpDnsProxy(dhcp.DhcpLocalProcess):
                 try:
                     ip_wrapper.netns.execute(cmd)
                 except RuntimeError:
-                    LOG.info(_('Can\' start dhcrelay for %s'),
+                    LOG.info(_("Can't start dhcrelay for %(command)s"),
                              {'command': cmd})
             else:
                 utils.execute(cmd, self.root_helper)

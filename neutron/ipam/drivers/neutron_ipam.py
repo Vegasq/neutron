@@ -128,7 +128,8 @@ class NeutronIPAMController(base.IPAMController):
                 context, subnet_id, ip['ip_address'])
             return ip_address
         else:
-            return neutron_db.generate_ip(context, subnet)
+            subnets = [subnet]
+            return neutron_db.generate_ip(context, subnets)
 
     def deallocate_ip(self, context, backend_subnet, host, ip_address):
         # IPAllocations are automatically handled by cascade deletion
@@ -365,7 +366,6 @@ class NeutronIPAM(base.IPAMManager):
 
             LOG.debug('IPAMManager allocate IP: %s' % ip_address)
             mac_address = host['mac_address']
-
             self.dhcp_controller.bind_mac(
                 context,
                 backend_subnet,
