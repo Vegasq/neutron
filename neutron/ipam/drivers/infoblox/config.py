@@ -396,12 +396,18 @@ class MemberManager(object):
             member_config_stream = io.FileIO(config_file)
         with member_config_stream:
             all_members = jsonutils.loads(member_config_stream.read())
+            available_members = filter(
+                lambda m: m.get('is_available', True), all_members)
+            self.available_members = []
 
             try:
-                self.available_members = map(
-                    lambda m: objects.Member(name=m['name'], ip=m['ipv4addr'],
-                                             ipv6=m['ipv6addr']),
-                    filter(lambda m: m.get('is_available', True), all_members))
+                for member in available_members:
+                    self.available_members.append(
+                        objects.Member(name=member['name'],
+                                       ip=member['ipv4addr']))
+                    self.available_members.append(
+                        objects.Member(name=member['name'],
+                                       ip=member['ipv6addr']))
             except KeyError as key:
                 raise exceptions.InvalidMemberConfig(key=key)
 

@@ -69,20 +69,15 @@ class InfobloxIPAM(neutron_ipam.NeutronIPAM):
     def _collect_members_ips(self, context, network, model):
         members = context.session.query(model)
         result = members.filter_by(network_id=network['id'])
-        ip_list = []
-        ipv6_list = []
-        for member in result:
-            ip_list.append(member.server_ip)
-            ipv6_list.append(member.server_ipv6)
-        return (ip_list, ipv6_list)
+        return [member.server_ip for member in result]
 
     def get_additional_network_dict_params(self, ctx, network_id):
         network = self.ipam_controller._get_network(ctx, network_id)
 
-        dns_list, dns_ipv6_list = self._collect_members_ips(
+        dns_list = self._collect_members_ips(
             ctx, network, models.InfobloxDNSMember)
 
-        dhcp_list, dhcp_ipv6_list = self._collect_members_ips(
+        dhcp_list = self._collect_members_ips(
             ctx, network, models.InfobloxDHCPMember)
 
         ib_mgmt_ip = self.ipam_controller.ib_db.get_management_net_ip(
@@ -91,7 +86,5 @@ class InfobloxIPAM(neutron_ipam.NeutronIPAM):
         return {
             'external_dhcp_servers': dhcp_list,
             'external_dns_servers': dns_list,
-            'external_dhcp_ipv6_servers': dhcp_ipv6_list,
-            'external_dns_ipv6_servers': dns_ipv6_list,
             'mgmt_iface_ip': ib_mgmt_ip
         }

@@ -122,7 +122,6 @@ class InfobloxIPAMController(neutron_ipam.NeutronIPAMController):
             for member in dhcp_members:
                 dhcp_member = models.InfobloxDHCPMember(
                     server_ip=member.ip,
-                    server_ipv6=member.ipv6,
                     network_id=network.id
                 )
                 context.session.add(dhcp_member)
@@ -130,7 +129,6 @@ class InfobloxIPAMController(neutron_ipam.NeutronIPAMController):
             for member in dns_members:
                 dns_member = models.InfobloxDNSMember(
                     server_ip=member.ip,
-                    server_ipv6=member.ipv6,
                     network_id=network.id
                 )
                 context.session.add(dns_member)

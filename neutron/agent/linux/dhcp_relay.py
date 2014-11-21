@@ -272,14 +272,15 @@ class DhcpDnsProxy(dhcp.DhcpLocalProcess):
     def _spawn_dhcp_proxy(self):
         """Spawns a dhcrelay process for the network."""
         relay_ips = self._get_relay_ips('external_dhcp_servers')
-        relay_ipv6s = self._get_relay_ips('external_dhcp_ipv6_servers')
+        relay_ipv4s = [relay_ip for relay_ip in relay_ips if '.' in relay_ip]
+        relay_ipv6s = [relay_ip for relay_ip in relay_ips if ':' in relay_ip]
 
         if not relay_ips:
             LOG.error(_('DHCP relay server isn\'t defined for network %s'),
                       self.network.id)
             return
 
-        commands = self._construct_dhcrelay_commands(relay_ips, relay_ipv6s)
+        commands = self._construct_dhcrelay_commands(relay_ipv4s, relay_ipv6s)
 
         for cmd in commands:
             if self.network.namespace:

@@ -31,7 +31,6 @@ class InfobloxDNSMember(model_base.BASEV2, models_v2.HasId):
     network_id = sa.Column(sa.String(36), sa.ForeignKey('networks.id',
                                                         ondelete="CASCADE"))
     server_ip = sa.Column(sa.String(40))
-    server_ipv6 = sa.Column(sa.String(40))
 
 
 class InfobloxDHCPMember(model_base.BASEV2, models_v2.HasId):
@@ -40,7 +39,6 @@ class InfobloxDHCPMember(model_base.BASEV2, models_v2.HasId):
     network_id = sa.Column(sa.String(36), sa.ForeignKey('networks.id',
                                                         ondelete="CASCADE"))
     server_ip = sa.Column(sa.String(40))
-    server_ipv6 = sa.Column(sa.String(40))
 
 
 class InfobloxMemberMap(model_base.BASEV2):
