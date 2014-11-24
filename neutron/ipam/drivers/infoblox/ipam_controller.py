@@ -115,7 +115,8 @@ class InfobloxIPAMController(neutron_ipam.NeutronIPAMController):
             if attributes.is_attr_set(subnet['ipv6_ra_mode']):
                 method_arguments['ipv6_ra_mode'] = subnet['ipv6_ra_mode']
             if attributes.is_attr_set(subnet['ipv6_address_mode']):
-                method_arguments['ipv6_address_mode'] = subnet['ipv6_address_mode']
+                method_arguments[
+                    'ipv6_address_mode'] = subnet['ipv6_address_mode']
 
         if not cfg.is_external and cfg.require_dhcp_relay:
             for member in dhcp_members:
