@@ -168,8 +168,7 @@ class IPv4Backend(IPBackend):
             'range', range_data, check_if_exists=False)
 
     def create_network(self, net_view_name, cidr, nameservers=None,
-                       members=None, gateway_ip=None, dhcp_trel_ip=None,
-                       network_extattrs=None):
+                       members=None, gateway_ip=None, network_extattrs=None):
         network_data = {'network_view': net_view_name,
                         'network': cidr,
                         'extattrs': network_extattrs}
@@ -217,8 +216,7 @@ class IPv6Backend(IPBackend):
             'ipv6range', range_data, check_if_exists=False)
 
     def create_network(self, net_view_name, cidr, nameservers=None,
-                       members=None, gateway_ip=None, dhcp_trel_ip=None,
-                       network_extattrs=None):
+                       members=None, gateway_ip=None, network_extattrs=None):
         network_data = {'network_view': net_view_name,
                         'network': cidr,
                         'extattrs': network_extattrs}
@@ -280,12 +278,10 @@ class InfobloxObjectManipulator(object):
         return self._create_infoblox_object('view', dns_view_data)
 
     def create_network(self, net_view_name, cidr, nameservers=None,
-                       members=None, gateway_ip=None, dhcp_trel_ip=None,
-                       network_extattrs=None):
+                       members=None, gateway_ip=None, network_extattrs=None):
         ip_backend = IPBackendFactory.get(self, cidr)
         ip_backend.create_network(net_view_name, cidr, nameservers,
-                                  members, gateway_ip, dhcp_trel_ip,
-                                  network_extattrs)
+                                  members, gateway_ip, network_extattrs)
 
     def create_network_from_template(self, net_view_name, cidr, template,
                                      network_extattrs):
