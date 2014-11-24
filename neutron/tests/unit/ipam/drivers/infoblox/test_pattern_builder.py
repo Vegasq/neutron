@@ -36,15 +36,15 @@ class PatternBuilderTestCase(base.BaseTestCase):
         subnet = mock.MagicMock()
 
         pb = config.PatternBuilder("{}")
-        self.assertRaises(exceptions.InvalidPattern,
+        self.assertRaises(exceptions.InfobloxConfigException,
                           pb.build, context, subnet)
 
         pb = config.PatternBuilder("start..end")
-        self.assertRaises(exceptions.InvalidPattern,
+        self.assertRaises(exceptions.InfobloxConfigException,
                           pb.build, context, subnet)
 
         pb = config.PatternBuilder("{non-existing-variable}")
-        self.assertRaises(exceptions.InvalidPattern,
+        self.assertRaises(exceptions.InfobloxConfigException,
                           pb.build, context, subnet)
 
     def test_subnet_id_used_if_subnet_has_no_name(self):

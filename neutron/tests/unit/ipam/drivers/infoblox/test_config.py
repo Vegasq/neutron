@@ -88,7 +88,7 @@ class ConfigFinderTestCase(base.BaseTestCase):
         """
 
         # configuration is considered invalid if JSON parser has failed
-        self.assertRaises(exceptions.InfobloxInvalidConditionalConfig,
+        self.assertRaises(exceptions.InfobloxConfigException,
                           config.ConfigFinder,
                           stream=io.BytesIO(invalid_config),
                           member_manager=mock.Mock())
@@ -245,13 +245,13 @@ class ConfigFinderTestCase(base.BaseTestCase):
             valid_conf = config_template.format(condition=valid)
             try:
                 config.ConfigFinder(io.BytesIO(valid_conf), member_manager)
-            except exceptions.InfobloxInvalidConditionalConfig as e:
+            except exceptions.InfobloxConfigException as e:
                 msg = 'Unexpected {error_type} for {config}'.format(
                     error_type=type(e), config=valid_conf)
                 self.fail(msg)
 
         invalid_cof = config_template.format(condition='invalid-condition')
-        self.assertRaises(exceptions.InfobloxInvalidConditionalConfig,
+        self.assertRaises(exceptions.InfobloxConfigException,
                           config.ConfigFinder, io.BytesIO(invalid_cof),
                           member_manager)
 
@@ -268,7 +268,7 @@ class ConfigFinderTestCase(base.BaseTestCase):
         subnet = mock.MagicMock()
 
         cf = config.ConfigFinder(io.BytesIO(cfg), member_manager=mock.Mock())
-        self.assertRaises(exceptions.InfobloxNoConfigFoundForSubnet,
+        self.assertRaises(exceptions.InfobloxConfigException,
                           cf.find_config_for_subnet, context, subnet)
 
 
@@ -277,7 +277,7 @@ class ConfigTestCase(base.BaseTestCase):
         context = mock.Mock()
         subnet = mock.Mock()
 
-        self.assertRaises(exceptions.InfobloxInvalidConditionalConfig,
+        self.assertRaises(exceptions.InfobloxConfigException,
                           config.Config, {}, context, subnet,
                           member_manager=mock.Mock())
 
@@ -535,7 +535,8 @@ class ConfigTestCase(base.BaseTestCase):
 
 class MemberManagerTestCase(base.BaseTestCase):
     def test_raises_error_if_no_config_file(self):
-        self.assertRaises(exceptions.ConfigNotFound, config.MemberManager)
+        self.assertRaises(exceptions.InfobloxConfigException,
+                          config.MemberManager)
 
     def test_returns_next_unused_member(self):
         context = mock.MagicMock()
@@ -571,7 +572,7 @@ class MemberManagerTestCase(base.BaseTestCase):
 
         with mock.patch.object(infoblox_db, 'get_used_members',
                                mock.Mock(return_value=used_members)):
-            self.assertRaises(exceptions.NoInfobloxMemberAvailable,
+            self.assertRaises(exceptions.InfobloxConfigException,
                               mm.next_available, context)
 
     def test_reserve_member_stores_member_in_db(self):
@@ -628,7 +629,7 @@ class MemberManagerTestCase(base.BaseTestCase):
             io.BytesIO(jsonutils.dumps([{'name': actual_name,
                                     'ipv4addr': ip}])))
 
-        self.assertRaises(exceptions.NoInfobloxMemberAvailable, mm.get_member,
+        self.assertRaises(exceptions.InfobloxConfigException, mm.get_member,
                           search_for_name)
 
     def test_member_marked_as_unavailable(self):
@@ -656,7 +657,7 @@ class MemberManagerTestCase(base.BaseTestCase):
         """
 
         self.assertRaises(
-            exceptions.InfobloxInvalidConditionalConfig,
+            exceptions.InfobloxConfigException,
             config.ConfigFinder,
             stream=io.BytesIO(valid_config),
             member_manager=mock.Mock()
@@ -672,7 +673,7 @@ class MemberManagerTestCase(base.BaseTestCase):
         """
 
         self.assertRaises(
-            exceptions.InfobloxInvalidConditionalConfig,
+            exceptions.InfobloxConfigException,
             config.ConfigFinder,
             stream=io.BytesIO(valid_config),
             member_manager=mock.Mock()
