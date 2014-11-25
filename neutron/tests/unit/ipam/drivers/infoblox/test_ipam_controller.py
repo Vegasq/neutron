@@ -62,8 +62,7 @@ class CreateSubnetTestCases(base.BaseTestCase):
         config_finder = mock.Mock()
         config_finder.find_config_for_subnet = mock.Mock(return_value=cfg)
 
-        context = infoblox_ipam.FlowContext(mock.MagicMock(),
-                                            'create-subnet')
+        context = infoblox_ipam.FlowContext(mock.MagicMock(), 'create-subnet')
 
         b = ipam_controller.InfobloxIPAMController(self.object_manipulator,
                                                    config_finder,
@@ -181,7 +180,6 @@ class AllocateIPTestCase(base.BaseTestCase):
         ip_allocator = mock.Mock()
         context = mock.Mock()
 
-        hostname = 'fake port id'
         subnet = {'tenant_id': 'some-id', 'id': 'some-id'}
         mac = 'aa:bb:cc:dd:ee:ff'
         port = {'id': hostname,
@@ -208,7 +206,6 @@ class AllocateIPTestCase(base.BaseTestCase):
         ip_allocator = mock.Mock()
         context = mock.Mock()
 
-        hostname = 'fake port id'
         first_ip = '192.168.1.1'
         last_ip = '192.168.1.132'
 
@@ -218,8 +215,8 @@ class AllocateIPTestCase(base.BaseTestCase):
                   'id': 'some-id'}
 
         mac = 'aa:bb:cc:dd:ee:ff'
-        port = {'id': hostname,
-                'mac_address': mac}
+        port = {'mac_address': mac,
+                'device_owner': 'owner'}
 
         b = ipam_controller.InfobloxIPAMController(infoblox,
                                                    member_config,
@@ -230,7 +227,7 @@ class AllocateIPTestCase(base.BaseTestCase):
 
         assert not ip_allocator.allocate_given_ip.called
         ip_allocator.allocate_ip_from_range.assert_called_once_with(
-            mock.ANY, mock.ANY, mock.ANY, hostname, mac, first_ip, last_ip,
+            mock.ANY, mock.ANY, mock.ANY, mock.ANY, mac, first_ip, last_ip,
             mock.ANY)
 
     def test_cannot_allocate_ip_raised_if_empty_range(self):
@@ -245,7 +242,8 @@ class AllocateIPTestCase(base.BaseTestCase):
                   'cidr': '192.168.0.0/24'}
         mac = 'aa:bb:cc:dd:ee:ff'
         host = {'name': hostname,
-                'mac_address': mac}
+                'mac_address': mac,
+                'device_owner': 'owner'}
 
         b = ipam_controller.InfobloxIPAMController(infoblox,
                                                    member_config,

@@ -130,6 +130,22 @@ class InfobloxNetworkObjectTestCase(base.BaseTestCase):
         self.assertIsNone(nameservers_opt)
 
 
+class InfobloxIPv4ObjectTestCase(base.BaseTestCase):
+    def test_removes_correct_object_from_list_of_ips(self):
+        removed_ip = '192.168.1.2'
+        ips = [
+            objects.IPv4(ip='192.168.1.1'),
+            objects.IPv4(ip=removed_ip),
+            objects.IPv4(ip='192.168.1.3')
+        ]
+
+        ips.remove(removed_ip)
+
+        self.assertEqual(len(ips), 2)
+        for ip in ips:
+            self.assertTrue(ip.ip != removed_ip)
+
+
 class InfobloxIPv4HostRecordObjectTestCase(base.BaseTestCase):
     def setUp(self):
         super(InfobloxIPv4HostRecordObjectTestCase, self).setUp()

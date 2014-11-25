@@ -523,6 +523,50 @@ class InfobloxObjectManipulator(object):
         except exc.InfobloxSearchError:
             return False
 
+    def find_hostname(self, dns_view, hostname):
+        data = {
+            'name': hostname,
+            'view': dns_view
+        }
+
+        raw_host_record = self._get_infoblox_object_or_none(
+            'record:host', data, return_fields=['ipv4addrs'])
+
+        if raw_host_record:
+            hr = objects.HostRecordIPv4.from_dict(raw_host_record)
+
+            return hr
+
+    def get_host_record(self, dns_view, ip):
+        data = {
+            'view': dns_view,
+            'ipv4addr': ip
+        }
+
+        raw_host_record = self._get_infoblox_object_or_none(
+            'record:host', data, return_fields=['ipv4addrs'])
+
+        if raw_host_record:
+            hr = objects.HostRecordIPv4.from_dict(raw_host_record)
+            return hr
+
+    def _update_host_record_ips(self, host_record):
+        ipaddrs = {'ipv4addrs': [ip.to_dict(add_host=False)
+                                 for ip in host_record.ips]}
+        return self._update_infoblox_object_by_ref(
+            host_record.ref, ipaddrs, return_fields=['ipv4addrs'])
+
+    def delete_ip_from_host_record(self, host_record, ip):
+        host_record.ips.remove(ip)
+        self._update_host_record_ips(host_record)
+        return host_record
+
+    def add_ip_to_record(self, host_record, ip, mac):
+        host_record.ips.append(objects.IPv4(ip, mac))
+        ips = self._update_host_record_ips(host_record)
+        hr = objects.HostRecordIPv4.from_dict(ips)
+        return hr
+
     def _create_infoblox_ip_address(self, ip_object):
         try:
             created_ip_json = self._create_infoblox_object(
@@ -599,9 +643,12 @@ class InfobloxObjectManipulator(object):
         if ib_object_ref:
             self._update_infoblox_object_by_ref(ib_object_ref, update_kwargs)
 
-    def _update_infoblox_object_by_ref(self, ref, update_kwargs):
-        self.connector.update_object(ref, update_kwargs)
+    def _update_infoblox_object_by_ref(self, ref, update_kwargs,
+                                       return_fields=None):
+        updated_object = self.connector.update_object(ref, update_kwargs,
+                                                      return_fields)
         LOG.info(_('Infoblox object was updated: %s'), ref)
+        return updated_object
 
     def _delete_infoblox_object(self, obj_type, payload):
         ib_object_ref = None

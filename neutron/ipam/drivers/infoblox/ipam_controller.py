@@ -287,7 +287,8 @@ class InfobloxIPAMController(neutron_ipam.NeutronIPAMController):
                     netview=networkview_name, cidr=subnets['cidr'])
 
         LOG.debug('IP address allocated on Infoblox NIOS: %s', allocated_ip)
-        for member in cfg.dhcp_members:
+
+        for member in set(cfg.dhcp_members):
             self.infoblox.restart_all_services(member)
 
         return allocated_ip

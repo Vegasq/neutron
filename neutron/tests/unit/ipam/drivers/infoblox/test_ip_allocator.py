@@ -63,7 +63,7 @@ class FixedAddressAllocatorTestCase(base.BaseTestCase):
 
 class HostRecordAllocatorTestCase(base.BaseTestCase):
     def test_creates_host_record_on_allocate_ip(self):
-        ib_mock = mock.Mock()
+        ib_mock = mock.MagicMock()
 
         netview = 'some-test-net-view'
         dnsview = 'some-dns-view'
@@ -71,6 +71,8 @@ class HostRecordAllocatorTestCase(base.BaseTestCase):
         hostname = 'host1'
         mac = 'de:ad:be:ef:00:00'
         ip = '192.168.1.1'
+
+        ib_mock.find_hostname.return_value = None
 
         allocator = ip_allocator.HostRecordIPAllocator(ib_mock)
         allocator.allocate_given_ip(netview, dnsview, zone_auth, hostname,
@@ -80,7 +82,7 @@ class HostRecordAllocatorTestCase(base.BaseTestCase):
             dnsview, zone_auth, hostname, mac, ip)
 
     def test_creates_host_record_range_on_range_allocation(self):
-        ib_mock = mock.Mock()
+        ib_mock = mock.MagicMock()
 
         netview = 'some-test-net-view'
         dnsview = 'some-dns-view'
@@ -90,6 +92,8 @@ class HostRecordAllocatorTestCase(base.BaseTestCase):
         first_ip = '192.168.1.2'
         last_ip = '192.168.1.254'
 
+        ib_mock.find_hostname.return_value = None
+
         allocator = ip_allocator.HostRecordIPAllocator(ib_mock)
         allocator.allocate_ip_from_range(
             dnsview, netview, zone_auth, hostname, mac, first_ip, last_ip)
@@ -98,7 +102,7 @@ class HostRecordAllocatorTestCase(base.BaseTestCase):
             dnsview, netview, zone_auth, hostname, mac, first_ip, last_ip)
 
     def test_deletes_host_record(self):
-        ib_mock = mock.Mock()
+        ib_mock = mock.MagicMock()
 
         netview = 'some-test-net-view'
         dnsview = 'some-dns-view'

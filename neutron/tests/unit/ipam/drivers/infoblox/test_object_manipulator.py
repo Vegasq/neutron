@@ -124,6 +124,7 @@ class ObjectManipulatorTestCase(base.BaseTestCase):
         sample_host_record.hostname = hostname
         sample_host_record.zone_auth = zone_auth
         sample_host_record.ip = first_ip
+        sample_host_record.view = dns_view_name
 
         connector = mock.Mock()
         connector.create_object.return_value = sample_host_record.to_dict()
@@ -253,7 +254,8 @@ class ObjectManipulatorTestCase(base.BaseTestCase):
 
         ibom.update_network_options(ib_network)
 
-        connector.update_object.assert_called_once_with(ref, {'options': opts})
+        connector.update_object.assert_called_once_with(ref, {'options': opts},
+                                                        mock.ANY)
 
     def test_update_network_updates_eas_if_not_null(self):
         ref = 'infoblox_object_id'
@@ -270,7 +272,8 @@ class ObjectManipulatorTestCase(base.BaseTestCase):
         ibom.update_network_options(ib_network, eas)
 
         connector.update_object.assert_called_once_with(ref, {'options': opts,
-                                                              'extattrs': eas})
+                                                              'extattrs': eas},
+                                                        mock.ANY)
 
     def test_member_is_assigned_as_list_on_network_create(self):
         net_view = 'net-view-name'
@@ -381,7 +384,8 @@ class ObjectManipulatorTestCase(base.BaseTestCase):
                                                      None)
 
         matcher = PayloadMatcher({'name': fqdn})
-        connector.update_object.assert_called_once_with(mock.ANY, matcher)
+        connector.update_object.assert_called_once_with(mock.ANY, matcher,
+                                                        mock.ANY)
 
     def test_create_dns_zone_creates_zone_auth_object(self):
         dns_view_name = 'dns-view-name'

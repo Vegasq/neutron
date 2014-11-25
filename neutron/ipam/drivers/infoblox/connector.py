@@ -261,7 +261,7 @@ class Infoblox(object):
         return jsonutils.loads(r.content)
 
     @reraise_neutron_exception
-    def update_object(self, ref, payload):
+    def update_object(self, ref, payload, return_fields=None):
         """
         Update an Infoblox object
         Args:
@@ -272,8 +272,12 @@ class Infoblox(object):
         Raises:
             InfobloxException
         """
+        query_params = {}
+        if return_fields:
+            query_params['_return_fields'] = ','.join(return_fields)
+
         headers = {'Content-type': 'application/json'}
-        r = self.session.put(self._construct_url(ref),
+        r = self.session.put(self._construct_url(ref, query_params),
                              data=jsonutils.dumps(payload),
                              verify=self.sslverify,
                              headers=headers)

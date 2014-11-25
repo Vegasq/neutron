@@ -55,7 +55,25 @@ class IPAllocator(object):
 
 class HostRecordIPAllocator(IPAllocator):
     def bind_names(self, dnsview_name, ip, name):
-        self.infoblox.bind_name_with_host_record(dnsview_name, ip, name)
+        # See OPENSTACK-181. In case hostname already exists on NIOS, update
+        # host record which contains that hostname with the new IP address
+        # rather than creating a separate host record object
+        reserved_hostname_hr = self.infoblox.find_hostname(dnsview_name, name)
+        reserved_ip_hr = self.infoblox.get_host_record(dnsview_name, ip)
+
+        if reserved_hostname_hr == reserved_ip_hr:
+            return
+
+        if reserved_hostname_hr:
+            for hr_ip in reserved_ip_hr.ips:
+                if hr_ip == ip:
+                    self.infoblox.delete_host_record(dnsview_name, ip)
+                    self.infoblox.add_ip_to_record(reserved_hostname_hr,
+                                                   ip,
+                                                   hr_ip.mac)
+                    break
+        else:
+            self.infoblox.bind_name_with_host_record(dnsview_name, ip, name)
 
     def unbind_names(self, dnsview_name, ip, name):
         # Nothing to delete, all will be deleted together with host record.
@@ -67,16 +85,21 @@ class HostRecordIPAllocator(IPAllocator):
         hr = self.infoblox.create_host_record_from_range(
             dnsview_name, networkview_name, zone_auth, hostname, mac,
             first_ip, last_ip)
-        return hr.ip
+        return hr.ips[-1].ip
 
     def allocate_given_ip(self, netview_name, dnsview_name, zone_auth,
                           hostname, mac, ip, extattrs=None):
         hr = self.infoblox.create_host_record_for_given_ip(
             dnsview_name, zone_auth, hostname, mac, ip)
-        return hr.ip
+        return hr.ips[-1].ip
 
     def deallocate_ip(self, network_view, dns_view_name, ip):
-        self.infoblox.delete_host_record(dns_view_name, ip)
+        host_record = self.infoblox.get_host_record(dns_view_name, ip)
+
+        if len(host_record.ips) > 1:
+            self.infoblox.delete_ip_from_host_record(host_record, ip)
+        else:
+            self.infoblox.delete_host_record(dns_view_name, ip)
 
     def update_extattrs(self, network_view, dns_view, ip, extattrs):
         self.infoblox.update_host_record_eas(dns_view, ip, extattrs)
