@@ -204,6 +204,15 @@ class DhcpDnsProxy(dhcp.DhcpLocalProcess):
                 self.network,
                 self._get_relay_device_name(),
                 self.conf.dhcp_relay_bridge)
+
+            if self.conf.dhcp_delete_namespaces and self.network.namespace:
+                ns_ip = ip_lib.IPWrapper(self.root_helper,
+                                         self.network.namespace)
+                try:
+                    ns_ip.netns.delete(self.network.namespace)
+                except RuntimeError:
+                    msg = _('Failed trying to delete namespace: %s')
+                    LOG.exception(msg, self.network.namespace)
         self._remove_config_files()
 
     def spawn_process(self):
