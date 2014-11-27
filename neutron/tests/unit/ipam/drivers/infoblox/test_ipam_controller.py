@@ -53,6 +53,8 @@ class CreateSubnetTestCases(base.BaseTestCase):
         cfg = mock.Mock()
         cfg.reserve_dhcp_members = mock.Mock(return_value=[])
         cfg.reserve_dns_members = mock.Mock(return_value=[])
+        cfg.dhcp_members = ['member1.com']
+        cfg.dns_members = ['member1.com']
 
         config_finder = mock.Mock()
         config_finder.find_config_for_subnet = mock.Mock(return_value=cfg)
@@ -87,6 +89,12 @@ class UpdateSubnetTestCase(base.BaseTestCase):
         self.context = mock.Mock()
         ip_allocator = mock.Mock()
         config_finder = mock.Mock()
+
+        cfg = mock.Mock()
+        cfg.dhcp_members = ['member1.com']
+        cfg.dns_members = ['member1.com']
+        config_finder.find_config_for_subnet.return_value = cfg
+
         self.ipam = ipam_controller.InfobloxIPAMController(
             self.object_manipulator, config_finder, ip_allocator)
         self.ipam.ea_manager = mock.Mock()
@@ -146,6 +154,10 @@ class UpdateSubnetTestCase(base.BaseTestCase):
         ea_manager = mock.Mock()
         manip = mock.MagicMock()
         config_finder = mock.Mock()
+        config = mock.Mock()
+        config.dhcp_members = ['member1.com']
+        config.dns_members = ['member1.com']
+        config_finder.find_config_for_subnet = mock.Mock(return_value=config)
         context = mock.Mock()
         subnet_id = 'some-id'
         subnet = mock.MagicMock()
@@ -376,6 +388,10 @@ class DeleteSubnetTestCase(base.BaseTestCase):
     def test_ib_network_deleted(self):
         infoblox = mock.Mock()
         member_conf = mock.Mock()
+        config = mock.Mock()
+        config.dhcp_members = ['member1.com']
+        config.dns_members = ['member1.com']
+        member_conf.find_config_for_subnet = mock.Mock(return_value=config)
         ip_allocator = mock.Mock()
         context = mock.MagicMock()
 
@@ -394,6 +410,10 @@ class DeleteSubnetTestCase(base.BaseTestCase):
     def test_member_released(self):
         infoblox = mock.Mock()
         member_finder = mock.Mock()
+        config = mock.Mock()
+        config.dhcp_members = ['member1.com']
+        config.dns_members = ['member1.com']
+        member_finder.find_config_for_subnet = mock.Mock(return_value=config)
         ip_allocator = mock.Mock()
         context = mock.MagicMock()
 
@@ -412,6 +432,8 @@ class DeleteSubnetTestCase(base.BaseTestCase):
         infoblox.has_dns_zones = mock.Mock(return_value=False)
         ip_allocator = mock.Mock()
         config = mock.Mock()
+        config.dhcp_members = ['member1.com']
+        config.dns_members = ['member1.com']
         config._dns_view = dns_view
         config_finder = mock.Mock()
         config_finder.find_config_for_subnet = mock.Mock(return_value=config)
@@ -431,6 +453,10 @@ class DeleteSubnetTestCase(base.BaseTestCase):
         infoblox = mock.Mock()
         ip_allocator = mock.Mock()
         member_conf = mock.Mock()
+        config = mock.Mock()
+        config.dhcp_members = ['member1.com']
+        config.dns_members = ['member1.com']
+        member_conf.find_config_for_subnet = mock.Mock(return_value=config)
         context = mock.Mock()
         network = mock.MagicMock()
 
