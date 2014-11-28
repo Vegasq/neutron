@@ -81,7 +81,7 @@ class InfobloxDNSController(neutron_ipam.NeutronDNSController):
         subs = infoblox_db.get_subnets_by_port(context, port_id)
         port = infoblox_db.get_port_by_id(context, port_id)
         extattrs = self.ea_manager.get_extattrs_for_ip(context, port)
-        del extattrs['os_instance_id']
+        del extattrs['VM ID']
 
         configs = set()
         for subnet in subs:
