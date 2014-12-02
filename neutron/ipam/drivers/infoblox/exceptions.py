@@ -16,27 +16,11 @@
 from neutron.common import exceptions
 
 
-class ConfigNotFound(exceptions.NeutronException):
-    message = _("Configuration file for %(object)s not found.")
-
-
-class InvalidPattern(exceptions.NeutronException):
-    message = _("Invalid pattern syntax: %(msg)s")
-
-
 class InfobloxException(exceptions.NeutronException):
     """Generic Infoblox Exception."""
     def __init__(self, response, **kwargs):
         self.response = response
         super(InfobloxException, self).__init__(**kwargs)
-
-
-class InfobloxInvalidConditionalConfig(exceptions.NeutronException):
-    message = _("Conditional config has invalid syntax: %(msg)s")
-
-
-class InfobloxNoConfigFoundForSubnet(exceptions.NeutronException):
-    message = _("No matching conditional configuration found for %(subnet)s")
 
 
 class InfobloxIsMisconfigured(exceptions.NeutronException):
@@ -69,59 +53,9 @@ class InfobloxFuncException(InfobloxException):
                 "ref %(ref)s: %(content)s [code %(code)s]")
 
 
-class InfobloxCannotReserveIp(exceptions.NeutronException):
-    message = _("Cannot reserve %(ip)s IP address in the %(net_view)s ")
-
-
-class InfobloxReservationNotFound(exceptions.NeutronException):
-    message = _("IP reservation object not found "
-                "for %(reservation)s")
-
-
-class InfobloxTooManyObjectsFound(exceptions.NeutronException):
-    message = _("Too many objects found for %(request)s")
-
-
 class InfobloxHostRecordIpAddrNotCreated(exceptions.NeutronException):
     message = _("Infoblox host record ipv4addr has not been created for "
                 "IP %(ip)s, mac %(mac)s")
-
-
-class InfobloxHostRecordIpv4AddrNotCreated(exceptions.NeutronException):
-    """DEPRECATED. Use InfobloxHostRecordIpAddrNotCreated instead"""
-    message = _("Infoblox host record ipv4addr has not been created for "
-                "netview %(netview)s, cidr %(cidr)s, mac %(mac)s")
-
-
-class NoInfobloxMemberAvailable(exceptions.ResourceExhausted):
-    message = _("No Infoblox Member is available.")
-
-
-class NoInfobloxMembersAssignedToTenant(exceptions.NeutronException):
-    message = _("Tenant %(tenant)s has no Infoblox members assigned.")
-
-
-class MoreThanOneInfobloxMemberAssignedToTenant(exceptions.NeutronException):
-    message = _("Tenant %(tenant)s has more than one members assigned: "
-                "%(members)s.")
-
-
-class NoInfobloxMembersAssignedToNetwork(exceptions.NeutronException):
-    message = _("Network %(network)s has no Infoblox members assigned.")
-
-
-class MoreThanOneInfobloxMemberAssignedToNetwork(exceptions.NeutronException):
-    message = _("Network %(network)s has more than one members assigned: "
-                "%(members)s.")
-
-
-class NoInfobloxMembersAssignedToNetview(exceptions.NeutronException):
-    message = _("Network View %(netview)s has no Infoblox members assigned.")
-
-
-class MoreThanOneInfobloxMemberAssignedToNetview(exceptions.NeutronException):
-    message = _("Network View %(netview)s has more than one members assigned: "
-                "%(members)s.")
 
 
 class InfobloxCannotAllocateIpForSubnet(exceptions.NeutronException):
@@ -154,23 +88,9 @@ class InfobloxInvalidIp(InfobloxObjectParsingError):
     message = _("Bad IP address: %(ip)s")
 
 
-class HostRecordNotFound(exceptions.NeutronException):
-    message = _("Infoblox record:host object with %(ip_address)s is not found")
-
-
 class NoAttributeInInfobloxObject(exceptions.NeutronException):
     message = _("To find OpenStack %(os_object)s for Infoblox %(ib_object)s, "
                 "%(attribute)s must be in extensible attributes.")
-
-
-class ReservedMemberNotAvailableInConfig(exceptions.NeutronException):
-    message = _('Reserved member %(member_name)s not available in members '
-                'config %(config)s.')
-
-
-class InvalidMemberConfig(exceptions.NeutronException):
-    message = _("Infoblox member configuration has invalid syntax: "
-                "expected %(key)s argument not found")
 
 
 class OperationNotAllowed(exceptions.NeutronException):
@@ -179,3 +99,8 @@ class OperationNotAllowed(exceptions.NeutronException):
 
 class InfobloxConnectionError(exceptions.NeutronException):
     message = _("Infoblox HTTP request failed with: %(reason)s")
+
+
+class InfobloxConfigException(exceptions.NeutronException):
+    """Generic Infoblox Config Exception."""
+    pass
