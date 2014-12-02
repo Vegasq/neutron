@@ -217,7 +217,7 @@ class Infoblox(object):
             if (now - time_start > cfg.CONF.infoblox_max_retry_interval):
                 break
             if (now - time_retry_start < cfg.CONF.infoblox_min_retry_interval):
-                 time.sleep(cfg.CONF.infoblox_min_retry_interval - (
+                time.sleep(cfg.CONF.infoblox_min_retry_interval - (
                     now - time_retry_start))
 
         if r.status_code != requests.codes.CREATED:

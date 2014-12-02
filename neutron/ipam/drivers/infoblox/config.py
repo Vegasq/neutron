@@ -155,7 +155,7 @@ class PatternBuilder(object):
             fqdn = self.pattern.format(**pattern_dict)
         except (KeyError, IndexError) as e:
             raise exceptions.InfobloxConfigException(
-                msg="Invalid pattern %s" %e)
+                msg="Invalid pattern %s" % e)
 
         return fqdn
 
