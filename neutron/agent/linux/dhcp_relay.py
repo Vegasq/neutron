@@ -282,7 +282,7 @@ class DhcpDnsProxy(dhcp.DhcpLocalProcess):
             '--all-servers']
         cmd += server_list
         cmd += ['--pid-file=%s' % self.get_conf_file_name(
-            'dns_pid', ensure_conf_dir=True)]
+                'dns_pid', ensure_conf_dir=True)]
 
         if self.network.namespace:
             ip_wrapper = ip_lib.IPWrapper(self.root_helper,

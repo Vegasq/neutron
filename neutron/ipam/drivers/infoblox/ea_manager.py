@@ -29,6 +29,8 @@ LOG = logging.getLogger(__name__)
 class InfobloxEaManager(object):
     # CMP == cloud management platform
     OPENSTACK_OBJECT_FLAG = 'CMP Type'
+    INFOBLOX_IS_SHARED = 'Is Shared'
+    INFOBLOX_IS_EXTERNAL = 'Is External'
 
     def __init__(self, infoblox_db):
         # Passing this thru constructor to avoid cyclic imports
@@ -73,8 +75,8 @@ class InfobloxEaManager(object):
             'Subnet Name': os_subnet_name,
             'Network ID': os_network_id,
             'Network Name': os_network_name,
-            'Is External': os_network_is_external,
-            'Is Shared': os_network_is_shared,
+            InfobloxEaManager.INFOBLOX_IS_EXTERNAL: os_network_is_external,
+            InfobloxEaManager.INFOBLOX_IS_SHARED: os_network_is_shared,
             'Network Encap': os_network_type,
             'Segmentation ID': os_segmentation_id,
             'Physical Network Name': os_physical_network,
