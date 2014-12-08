@@ -219,3 +219,7 @@ def get_management_net_ip(context, network_id):
     mgmt_ip = query.filter_by(network_id=network_id).first()
 
     return mgmt_ip.ip_address if mgmt_ip else None
+
+def get_subnet(context, subnet_id):
+    subnet_qry = context.session.query(models_v2.Subnet)
+    return subnet_qry.filter_by(id=subnet_id).one()
