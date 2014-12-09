@@ -106,7 +106,7 @@ class InfobloxDNSController(neutron_ipam.NeutronDNSController):
         all_dns_members = []
 
         for ip in backend_port['fixed_ips']:
-            subnet = self._get_subnet(context, ip['subnet_id'])
+            subnet = infoblox_db.get_subnet(context, ip['subnet_id'])
             cfg = self.config_finder.find_config_for_subnet(context, subnet)
             dns_members = cfg.reserve_dns_members()
             all_dns_members.extend(dns_members)
