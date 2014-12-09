@@ -21,6 +21,7 @@ from neutron.ipam.drivers.infoblox import config
 from neutron.ipam.drivers.infoblox import connector
 from neutron.ipam.drivers.infoblox import constants as ib_constants
 from neutron.ipam.drivers.infoblox import ea_manager
+from neutron.ipam.drivers.infoblox import exceptions
 from neutron.ipam.drivers.infoblox import object_manipulator
 from neutron.ipam.drivers.infoblox import tasks
 from neutron.ipam.drivers import neutron_ipam
@@ -130,8 +131,12 @@ class InfobloxDNSController(neutron_ipam.NeutronDNSController):
 
     def bind_names(self, context, backend_port):
         extattrs = self.ea_manager.get_extattrs_for_ip(context, backend_port)
-        self._bind_names(context, backend_port, self.ip_allocator.bind_names,
-                         extattrs)
+        try:
+            self._bind_names(context, backend_port,
+                             self.ip_allocator.bind_names, extattrs)
+        except exceptions.InfobloxCannotCreateObject as e:
+            self.unbind_names(context, backend_port)
+            raise exceptions.InfobloxCannotCreateObject(e)
 
     def unbind_names(self, context, backend_port):
         self._bind_names(context, backend_port, self.ip_allocator.unbind_names)
