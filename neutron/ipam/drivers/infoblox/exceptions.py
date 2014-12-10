@@ -108,3 +108,8 @@ class InfobloxConfigException(exceptions.NeutronException):
 
 class InfobloxInternalPrivateSubnetAlreadyExist(exceptions.Conflict):
     message = _("Network with the same CIDR already exists on NIOS.")
+
+
+class InfobloxNetworkTypeNotAllowed(InfobloxException):
+    message = _("Network with network_type '%(network_type)s' "
+                "not allowed by NIOS.")
