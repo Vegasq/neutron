@@ -31,6 +31,7 @@ class InfobloxEaManager(object):
     OPENSTACK_OBJECT_FLAG = 'CMP Type'
     INFOBLOX_IS_SHARED = 'Is Shared'
     INFOBLOX_IS_EXTERNAL = 'Is External'
+    ALLOWED_NETWORK_TYPES = ['VXLAN', 'GRE', 'STT', 'VLAN']
 
     def __init__(self, infoblox_db):
         # Passing this thru constructor to avoid cyclic imports
@@ -62,7 +63,17 @@ class InfobloxEaManager(object):
         os_network_is_shared = network.get('shared')
         os_network_l2_info = self._network_l2_info_provider.\
             get_network_l2_info(context.session, os_network_id)
-        os_network_type = os_network_l2_info.get('network_type')
+
+        # Different L2 drivers store network_type in different places
+        # OVS in openvswitch/ovs_models_v2/NetworkBinding/network_type
+        # ML2 in ml2/models/NetworkSegment/network_type
+        # to prevent changes in these drivers to support infoblox
+        # let's do uppercase network_type value here.
+        os_network_type = os_network_l2_info.get('network_type').upper()
+        if os_network_type not in self.ALLOWED_NETWORK_TYPES:
+            raise exceptions.InfobloxNetworkTypeNotAllowed(
+                network_type=os_network_type)
+
         os_segmentation_id = os_network_l2_info.get('segmentation_id')
         os_physical_network = os_network_l2_info.get('physical_network')
         os_tenant_id = (network.get('tenant_id') or
