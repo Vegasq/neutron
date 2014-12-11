@@ -251,10 +251,14 @@ class DhcpDnsProxy(dhcp.DhcpLocalProcess):
 
     def _construct_dhcrelay_commands(self, relay_ips, relay_ipv6s):
         dhcrelay_v4_command = [
-            self.conf.dhcrelay_path, '-4', '-a', '-i', self.interface_name]
+            self.conf.dhcrelay_path, '-4', '-a', '-i',
+            '-pf', self.get_conf_file_name('dhcp4_pid', ensure_conf_dir=True),
+            self.interface_name]
 
         dhcrelay_v6_command = [
-            self.conf.dhcrelay_path, '-6', '-I', '-l', self.interface_name]
+            self.conf.dhcrelay_path, '-6', '-I', '-l',
+            '-pf', self.get_conf_file_name('dhcp6_pid', ensure_conf_dir=True),
+            self.interface_name]
 
         if self.conf.use_link_selection_option:
             dhcrelay_v4_command.append('-o')
@@ -300,8 +304,6 @@ class DhcpDnsProxy(dhcp.DhcpLocalProcess):
             else:
                 utils.execute(cmd, self.root_helper)
 
-        self._save_process_pids()
-
     def _spawn_dns_proxy(self):
         """Spawns a Dnsmasq process in DNS relay only mode for the network."""
         relay_ips = self._get_relay_ips('external_dns_servers')
@@ -334,22 +336,6 @@ class DhcpDnsProxy(dhcp.DhcpLocalProcess):
             ip_wrapper.netns.execute(cmd)
         else:
             utils.execute(cmd, self.root_helper)
-
-    def _save_process_pids(self):
-        pids = [pid for pid in os.listdir('/proc') if pid.isdigit()]
-
-        for pid in pids:
-            try:
-                cmdline = open(os.path.join('/proc', pid, 'cmdline'),
-                               'rb').read()
-                if ((self.interface_name in cmdline) and
-                    cmdline.startswith('%s-4' % self.conf.dhcrelay_path)):
-                    self.set_dhcp_pid(pid, version=4)
-                if ((self.interface_name in cmdline) and
-                    cmdline.startswith('%s-6' % self.conf.dhcrelay_path)):
-                    self.set_dhcp_pid(pid, version=6)
-            except IOError:
-                continue
 
     def _get_relay_device_name(self):
         return (self.RELAY_DEV_NAME_PREFIX +
