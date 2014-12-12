@@ -177,7 +177,54 @@ class InfobloxIPv4HostRecordObjectTestCase(base.BaseTestCase):
                              for expected in expected_attributes]))
 
 
-class FixedAddressTestCase(base.BaseTestCase):
+class InfobloxIPv6HostRecordObjectTestCase(base.BaseTestCase):
+    def setUp(self):
+        super(InfobloxIPv6HostRecordObjectTestCase, self).setUp()
+        host_record_ref = ("record:host/ZG5zLmhvc3QkLjY3OC5jb20uZ2xvYmFsLmNs"
+                           "b3VkLnRlc3RzdWJuZXQudGVzdF9ob3N0X25hbWU:"
+                           "test_host_name.testsubnet.cloud.global.com/"
+                           "default.687401e9f7a7471abbf301febf99854e")
+        ipv6addrs_ref = ("record:host_ipv4addr/ZG5zLmhvc3RfYWRkcmVzcyQuNjc"
+                         "4LmNvbS5nbG9iYWwuY2xvdWQudGVzdHN1Ym5ldC50ZXN0X2h"
+                         "vc3RfbmFtZS4xOTIuMTY4LjAuNS4:2001:DB8::3/"
+                         "test_host_name.testsubnet.cloud.global.com/"
+                         "default.687401e9f7a7471abbf301febf99854e")
+        self.host_record = jsonutils.loads("""{
+            "_ref": "%s",
+            "ipv6addrs": [
+                {
+                    "_ref": "%s",
+                    "configure_for_dhcp": false,
+                    "host": "test_host_name.testsubnet.cloud.global.com",
+                    "ipv6addr": "2001:DB8::3",
+                    "mac": "aa:bb:cc:dd:ee:ff"
+                }
+            ]
+        }
+        """ % (host_record_ref, ipv6addrs_ref))
+
+    def test_constructs_object_from_dict(self):
+        host_record = objects.HostRecordIPv6.from_dict(self.host_record)
+        self.assertIsNotNone(host_record)
+
+    def test_hostname_is_set_from_dict(self):
+        expected_hostname = 'expected_hostname'
+        expected_dns_zone = 'expected.dns.zone.com'
+        self.host_record['ipv6addrs'][0]['host'] = '.'.join(
+            [expected_hostname, expected_dns_zone])
+        host_record = objects.HostRecordIPv6.from_dict(self.host_record)
+
+        self.assertEqual(expected_hostname, host_record.hostname)
+        self.assertEqual(expected_dns_zone, host_record.zone_auth)
+
+    def test_all_attributes_are_set_from_dict(self):
+        expected_attributes = ['hostname', 'dns_view', 'mac', 'ip']
+        hr = objects.HostRecordIPv6.from_dict(self.host_record)
+        self.assertTrue(all([expected in dir(hr)
+                             for expected in expected_attributes]))
+
+
+class FixedAddressIPv4TestCase(base.BaseTestCase):
     def test_builds_valid_fa_from_infoblox_returned_json(self):
         fixed_address_ref = ("fixedaddress/ZG5zLmZpeGVkX2FkZHJlc3MkMTAuMC4wLj"
                              "EwMC42ODAuLg:10.0.0.100/rv-test-netview")
@@ -187,7 +234,7 @@ class FixedAddressTestCase(base.BaseTestCase):
             "ipv4addr": "%s"
         }""" % (fixed_address_ref, ip))
 
-        fa = objects.FixedAddress.from_dict(fixed_address)
+        fa = objects.FixedAddressIPv4.from_dict(fixed_address)
         self.assertEqual(fa.ip, ip)
 
     def test_dict_contains_mac_ip_and_net_view(self):
@@ -203,10 +250,47 @@ class FixedAddressTestCase(base.BaseTestCase):
             'extattrs': expected_extattrs
         }
 
-        fa = objects.FixedAddress()
+        fa = objects.FixedAddressIPv4()
         fa.ip = expected_ip
         fa.net_view = expected_net_view
         fa.mac = expected_mac
+        fa.extattrs = expected_extattrs
+
+        self.assertThat(fa.to_dict(), matchers.KeysEqual(expected_dict))
+        self.assertThat(fa.to_dict(), matchers.Equals(expected_dict))
+
+
+class FixedAddressIPv6TestCase(base.BaseTestCase):
+    def test_builds_valid_fa_from_infoblox_returned_json(self):
+        fixed_address_ref = ("fixedaddress/ZG5zLmZpeGVkX2FkZHJlc3MkMTAuMC4wLj"
+                             "EwMC42ODAuLg:10.0.0.100/rv-test-netview")
+        ip = "2001:DB8::3"
+        fixed_address = jsonutils.loads("""{
+            "_ref": "%s",
+            "ipv6addr": "%s"
+        }""" % (fixed_address_ref, ip))
+
+        fa = objects.FixedAddressIPv6.from_dict(fixed_address)
+        self.assertEqual(fa.ip, ip)
+
+    def test_dict_contains_mac_ip_and_net_view(self):
+        expected_ip = "2001:DB8::3"
+        duid = "aa:bb:cc:dd:ee:ff"
+        expected_duid = "00:03:00:01:aa:bb:cc:dd:ee:ff"
+        expected_net_view = "test-net-view-name"
+        expected_extattrs = "test-extattrs"
+
+        expected_dict = {
+            'duid': expected_duid,
+            'ipv6addr': expected_ip,
+            'network_view': expected_net_view,
+            'extattrs': expected_extattrs
+        }
+
+        fa = objects.FixedAddressIPv6()
+        fa.ip = expected_ip
+        fa.net_view = expected_net_view
+        fa.mac = duid
         fa.extattrs = expected_extattrs
 
         self.assertThat(fa.to_dict(), matchers.KeysEqual(expected_dict))

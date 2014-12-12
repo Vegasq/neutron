@@ -16,6 +16,7 @@
 from oslo.config import cfg as neutron_conf
 from taskflow.patterns import linear_flow
 
+from neutron.api.v2 import attributes
 from neutron.db.infoblox import infoblox_db
 from neutron.db.infoblox import models
 from neutron.extensions import external_net
@@ -115,13 +116,23 @@ class InfobloxIPAMController(neutron_ipam.NeutronIPAMController):
                             'dhcp_trel_ip': infoblox_db.get_management_net_ip(
                                 context,
                                 subnet['network_id']),
+                            # Members to be restarted
                             'related_members': set(cfg.dhcp_members +
-                                                   cfg.dns_members)}
+                                                   cfg.dns_members),
+                            'ip_version': subnet['ip_version']}
+
+        if subnet['ip_version'] == 6 and subnet['enable_dhcp']:
+            if attributes.is_attr_set(subnet['ipv6_ra_mode']):
+                method_arguments['ipv6_ra_mode'] = subnet['ipv6_ra_mode']
+            if attributes.is_attr_set(subnet['ipv6_address_mode']):
+                method_arguments[
+                    'ipv6_address_mode'] = subnet['ipv6_address_mode']
 
         if not cfg.is_external and cfg.require_dhcp_relay:
             for member in dhcp_members:
                 dhcp_member = models.InfobloxDHCPMember(
                     server_ip=member.ip,
+                    server_ipv6=member.ipv6,
                     network_id=network.id
                 )
                 context.session.add(dhcp_member)
@@ -129,6 +140,7 @@ class InfobloxIPAMController(neutron_ipam.NeutronIPAMController):
             for member in dns_members:
                 dns_member = models.InfobloxDNSMember(
                     server_ip=member.ip,
+                    server_ipv6=member.ipv6,
                     network_id=network.id
                 )
                 context.session.add(dns_member)
