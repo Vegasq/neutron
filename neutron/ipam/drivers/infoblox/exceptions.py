@@ -113,3 +113,8 @@ class InfobloxInternalPrivateSubnetAlreadyExist(exceptions.Conflict):
 class InfobloxNetworkTypeNotAllowed(InfobloxException):
     message = _("Network with network_type '%(network_type)s' "
                 "not allowed by NIOS.")
+
+
+class InfobloxBadWAPICredential(InfobloxException):
+    message = _("Infoblox IPAM is misconfigured: "
+                "infoblox_username and infoblox_password are incorrect.")
