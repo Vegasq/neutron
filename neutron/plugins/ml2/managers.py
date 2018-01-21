@@ -739,7 +739,7 @@ class MechanismManager(stevedore.named.NamedExtensionManager):
     def _bind_port_level(self, context, level, segments_to_bind):
         binding = context._binding
         port_id = context.current['id']
-        LOG.debug("Attempting to bind port %(port)s on host %(host)s "
+        LOG.error("Attempting to bind port %(port)s on host %(host)s "
                   "at level %(level)s using segments %(segments)s",
                   {'port': port_id,
                    'host': context.host,
@@ -753,15 +753,23 @@ class MechanismManager(stevedore.named.NamedExtensionManager):
                        'host': context.host})
             return False
 
+        LOG.error(">>> Check every driver in %s" % self.ordered_mech_drivers)
         for driver in self.ordered_mech_drivers:
+            LOG.error(">>> Check driver %s" % driver)
             if not self._check_driver_to_bind(driver, segments_to_bind,
                                               context._binding_levels):
+                LOG.error(">>> _check_driver_to_bind is False so EXIT")
                 continue
             try:
+                LOG.error(">>> context._prepare_to_bind(segments_to_bind)")
                 context._prepare_to_bind(segments_to_bind)
+                LOG.error(">>> driver.obj.bind_port(context)")
                 driver.obj.bind_port(context)
                 segment = context._new_bound_segment
+
+                LOG.error(">>> if segment, segment=%s" % segment)
                 if segment:
+                    LOG.error(">>> context._push_binding_level(")
                     context._push_binding_level(
                         models.PortBindingLevel(port_id=port_id,
                                                 host=context.host,
@@ -770,7 +778,9 @@ class MechanismManager(stevedore.named.NamedExtensionManager):
                                                 segment_id=segment))
                     next_segments = context._next_segments_to_bind
                     if next_segments:
+                        LOG.error(">>> if next_segments")
                         # Continue binding another level.
+                        LOG.error("if self._bind_port_level(context, level + 1,")
                         if self._bind_port_level(context, level + 1,
                                                  next_segments):
                             return True
